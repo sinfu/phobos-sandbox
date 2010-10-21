@@ -1,0 +1,3348 @@
+// Written in the D programming language.
+
+/**
+Generic templates and utilities for manipurating compile-time entities
+themselves.  Compile-time entities include types, compile-time values,
+symbols, and sequences of those entities.
+
+All members in this module are defined in the implicit $(D meta)
+namespace and cannot be used without the $(D meta) qualifier:
+--------------------
+import std.meta;
+
+// Error! reverse is not defined. Use meta.reverse instead.
+alias reverse!("x", 10, "y", 20) Rev;
+
+// Okay, qualified with meta.
+alias meta.reverse!("x", 10, "y", 20) Rev;
+--------------------
+
+Examples:
+--------------------
+TODO
+--------------------
+
+Macros:
+  WIKI = Phobos/StdMeta
+ TITLE = std.meta
+
+Source:      $(PHOBOSSRC std/_meta.d) (which is just a shell around
+             $(PHOBOSSRC std/internal/_meta/_meta.d))
+Copyright:   Copyright Shin Fujishiro 2010.
+License:     $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Authors:     Shin Fujishiro
+ */
+module std.internal.meta.meta;
+
+//             Copyright Shin Fujishiro 2010.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+
+// Introduce the meta namespace for unaryT etc.
+import meta = std.internal.meta.meta;
+
+
+//----------------------------------------------------------------------------//
+// Fundamental Templates
+//----------------------------------------------------------------------------//
+
+
+/**
+Returns an alias to the passed compile-time entity $(D E).
+
+Params:
+ E = A compile-time entity: type, compile-time value, or any symbol that
+     has an identifier.
+
+Example:
+ You may want to use $(D Id) to alias a compile-time entity that
+ may be a literal value.  The following example doesn't work without
+ $(D Id) since $(D 10) cannot be $(D alias)ed.
+--------------------
+template Front(seq...)
+{
+    alias meta.Id!(seq[0]) Front;
+}
+alias Front!(int, short) Type;  // works
+alias Front!(10, 20, 30) value; // works
+--------------------
+ */
+template Id(E)
+{
+    alias E Id;
+}
+
+/// ditto
+template Id(alias E)
+{
+    alias E Id;
+}
+
+
+unittest
+{
+    int sym;
+
+    alias Id!int T;
+    alias Id!100 n;
+    alias Id!sym s;
+    static assert(is(T == int));
+    static assert(   n == 100 );
+    static assert(__traits(isSame, s, sym));
+
+    // Test for run-time equivalence with "alias sym s;"
+    assert(&s == &sym);
+}
+
+
+
+/**
+Returns an alias to a sequence of compile-time entities $(D seq). It's
+the same thing as variadic template parameters.
+
+Params:
+ seq = Zero or more compile-time entities.
+
+Examples:
+ The following example makes a sequence of types $(D Types) and uses its
+ second element (= $(D double)) to declare a variable $(D value).
+--------------------
+alias meta.Seq!(int, double, string) Types;
+Types[1] value = 3.14;
+--------------------
+
+ The sequence may contain compile-time expressions.  The following example
+ makes a sequence of constant integers $(D numbers) and embeds it into an
+ array literal.
+--------------------
+alias meta.Seq!(10, 20, 30) numbers;
+int[] arr = [ 0, numbers, 100 ];
+assert(arr == [ 0, 10, 20, 30, 100 ]);
+--------------------
+ */
+template Seq(seq...)
+{
+    alias seq Seq;
+}
+
+
+unittest
+{
+    int[] arr = [ 0, Seq!(10, 20, 30), 100 ];
+    assert(arr == [ 0, 10, 20, 30, 100 ]);
+}
+
+
+
+/**
+$(D meta.pack!(seq)) packs the sequence $(D seq) into a single
+compile-time entity.
+
+Params:
+ seq = Zero or more compile-time entities to pack.
+
+Returns:
+ A compile-time entity that packs $(D seq) inside itself.
+
+ The result can be $(D alias)ed.  Sequences of packed entities can
+ be iterated with the $(D foreach) statement.
+--------------------
+// Iterate through sequence of sequences of compile-time values.
+alias meta.pack!(1, 2, 3) A;
+alias meta.pack!(4, 5, 6) B;
+alias meta.pack!(7, 8, 9) C;
+
+foreach (i, pak; meta.Seq!(A, B, C))
+{
+    int[] seq = [ pak.expand ];
+}
+--------------------
+
+BUGS:
+ Too much instantiations of $(D meta.pack) would hit $(BUGZILLA 3372)
+ and cause programs go mad on Windows.  The threshold depends on the
+ program, but a few thousand instantiations might be dangerous.
+ */
+struct Packer(seq...)
+{
+    /**
+     * Expands the packed sequence.
+     */
+    alias seq expand;
+
+
+    /**
+     * The number of compile-time entities packed in.
+     */
+    enum size_t length = seq.length;
+
+
+    /**
+     * Unique type associated with the packed sequence.
+     */
+    alias Packer Tag;
+
+
+    /* undocumented (value-packing doesn't work well at present) */
+    bool opEquals(rseq...)(Packer!rseq rhs)
+    {
+        return is(Tag == rhs.Tag);
+    }
+}
+
+/// ditto
+template pack(seq...)
+{
+    alias Packer!seq pack;
+}
+
+
+unittest    // basic tests
+{
+    alias pack!() empty;
+    static assert(empty.length == 0);
+    static assert(empty.expand.length == 0);
+
+    alias pack!(int, double) types;
+    static assert(is(types.expand == Seq!(int, double)));
+
+    alias pack!(10, 20, 30) values;
+    static assert([ values.expand ] == [ 10, 20, 30 ]);
+
+    alias pack!(int, 20, pack) mixed;
+    static assert(mixed.length == 3);
+    static assert(is(mixed.expand[0] == int));
+    static assert(   mixed.expand[1] ==  20 );
+
+    alias pack!( pack!1, pack!2, pack!int ) nesting;
+    static assert(nesting.length == 3);
+    static assert(nesting.expand[0]() == pack!1  ());
+    static assert(nesting.expand[1]() == pack!2  ());
+    static assert(nesting.expand[2]() == pack!int());
+}
+
+unittest    // doc example
+{
+    alias pack!(1, 2, 3) A;
+    alias pack!(4, 5, 6) B;
+    alias pack!(7, 8, 9) C;
+
+    foreach (i, pak; Seq!(A, B, C))
+    {
+        int[] seq = [ pak.expand ];
+    }
+}
+
+
+
+/**
+Returns $(D true) if and only if $(D E) is a packed sequence created
+with the $(D meta.pack).
+
+Example:
+ $(D meta.zip) requires its arguments should be a sequence of packed
+ sequences using $(D meta.isPacked).
+--------------------
+template zip(seqs...)
+    if (meta.all!(meta.isPacked, seqs))
+{
+    // ... implementation ...
+}
+--------------------
+ */
+template isPacked(E)
+{
+    static if (is(E _ : Packer!seq, seq...))
+    {
+        enum isPacked = true;
+    }
+    else
+    {
+        enum isPacked = false;
+    }
+}
+
+/// ditto
+template isPacked(alias E)
+{
+    static if (is(E _ : Packer!seq, seq...))
+    {
+        enum isPacked = true;
+    }
+    else
+    {
+        enum isPacked = false;
+    }
+}
+
+
+unittest
+{
+    // positive
+    struct UserDefined {}
+    static assert(isPacked!(pack!()));
+    static assert(isPacked!(pack!(int)));
+    static assert(isPacked!(pack!(int, double)));
+    static assert(isPacked!(pack!(int, 3.1416)));
+    static assert(isPacked!(pack!(UserDefined)));
+    static assert(isPacked!(pack!(pack!(), pack!())));
+
+    // negative
+    static assert(!isPacked!(1));
+    static assert(!isPacked!(int));
+    static assert(!isPacked!(pack));
+}
+
+
+
+/* undocumented (for internal use) */
+template insertFront(alias cdr, car...)
+{
+    alias pack!(car, cdr.expand) insertFront;
+}
+
+unittest
+{
+    alias insertFront!(pack!(), 1,2,3) empty123;
+    static assert(isPacked!empty123);
+    static assert([ empty123.expand ] == [ 1,2,3 ]);
+
+    alias insertFront!(pack!int, double) intdouble;
+    static assert(is(intdouble.expand == Seq!(double, int)));
+}
+
+
+
+/* undocumented (for internal use) */
+struct Tag(entities...);    // Being incomplete for bug 3372.
+
+unittest
+{
+    string sym;
+
+    // Can compare the type for equality.
+    alias Tag!int TagInt;
+    alias Tag!123 Tag123;
+    alias Tag!sym TagSym;
+    static assert(!is(TagInt == Tag123));
+    static assert(!is(Tag123 == TagSym));
+    static assert(!is(TagSym == TagInt));
+
+    // Can take pointers' properties.
+    enum mint = (TagInt*).mangleof;
+    enum m123 = (Tag123*).mangleof;
+    enum msym = (TagSym*).mangleof;
+    static assert(mint < m123);
+}
+
+
+
+/**
+Determines if $(D A) and $(D B) are the same compile-time entities
+or not.  $(D A) and $(D B) are considered the same if their mangled
+names as template arguments coincide with each other.
+
+Returns:
+ $(D true) if and only if $(D A) and $(D B) are the same entity.
+
+Example:
+ Comparing various entities.
+--------------------
+// Compare types.
+struct MyType {}
+static assert( meta.isSame!(int, int));
+static assert(!meta.isSame!(MyType, double));
+
+// Compare values.  Type is significant.
+enum str = "abc";
+static assert( meta.isSame!(str, "abc"));
+static assert(!meta.isSame!(10, 10u));      // int and uint
+
+// Compare symbols.
+void fun() {}
+static assert( meta.isSame!(fun, fun));
+static assert(!meta.isSame!(fun, std));     // function and package
+--------------------
+ */
+template isSame(A, B)
+{
+    enum isSame = is(A == B);
+}
+
+/// ditto
+template isSame(A, alias B)
+    if (!isType!B)
+{
+    enum isSame = false;
+}
+
+/// ditto
+template isSame(alias A, B)
+    if (!isType!A)
+{
+    enum isSame = false;
+}
+
+/// ditto
+template isSame(alias A, alias B)
+    if (!isType!A && !isType!B)
+{
+    // Type templates match in terms of mangled names, effectively.
+    enum isSame = is(Tag!A == Tag!B);
+}
+
+
+unittest    // type vs type
+{
+    enum   E { a }
+    struct S {}
+
+    // positive
+    static assert(isSame!(int, int));
+    static assert(isSame!(  E,   E));
+    static assert(isSame!(  S,   S));
+
+    // qualifier
+    static assert(!isSame!(const  int, int));
+    static assert(!isSame!(shared int, int));
+
+    // different
+    static assert(!isSame!(int,   E));
+    static assert(!isSame!(  E,   S));
+    static assert(!isSame!(  S, int));
+}
+
+unittest    // value vs value
+{
+    struct S {}
+
+    static assert(isSame!(100, 100));
+    static assert(isSame!('A', 'A'));
+    static assert(isSame!(S(), S()));
+    static assert(isSame!("abc", "abc"));
+
+    static assert(!isSame!(100, 'A'));
+    static assert(!isSame!("abc", S()));
+    static assert(!isSame!(100, 100u));
+}
+
+unittest    // symbol vs symbol
+{
+    void fun() {}
+    void pun() {}
+
+    // functions
+    static assert( isSame!(fun, fun));
+    static assert( isSame!(pun, pun));
+    static assert(!isSame!(fun, pun));
+
+    // template, package
+    static assert(isSame!(isSame, isSame));
+    static assert(isSame!(   std,    std));
+
+    static assert(!isSame!(fun, isSame));
+    static assert(!isSame!(pun,    std));
+}
+
+unittest    // mismatch
+{
+    static assert(!isSame!(   int, isSame));
+    static assert(!isSame!(isSame,    int));
+    static assert(!isSame!(    40,    int));
+    static assert(!isSame!(   int,     40));
+    static assert(!isSame!(isSame,     40));
+    static assert(!isSame!(    40, isSame));
+}
+
+unittest    // doc example
+{
+    struct MyType {}
+    static assert( isSame!(int, int));
+    static assert(!isSame!(MyType, double));
+
+    enum str = "abc";
+    static assert( isSame!(str, "abc"));
+    static assert(!isSame!(10, 10u));
+
+    void fun() {}
+    static assert( isSame!(fun, fun));
+    static assert(!isSame!(fun, std));
+}
+
+
+
+/**
+Convenience overloads.  If the second argument $(D B) is omitted,
+$(D meta.isSame!A) binds $(D A) to its own first parameter and returns a
+partially applied template.
+
+Example:
+--------------------
+// Bind double as A.
+alias meta.isSame!double isDouble;
+
+static assert( isDouble!double);    // meta.isSame!(double, double)
+static assert(!isDouble!int   );    // meta.isSame!(double, int)
+--------------------
+ */
+template isSame(A)
+{
+    alias _isSameAs!A.isSame isSame;
+}
+
+/// ditto
+template isSame(alias A)
+{
+    alias _isSameAs!A.isSame isSame;
+}
+
+
+private
+{
+    // The eponymous templates spec doesn't allow overloads, so we
+    // do it manually.
+
+    template _isSameAs(A)
+    {
+        template isSame(      B) { alias .isSame!(A, B) isSame; }
+        template isSame(alias B) { alias .isSame!(A, B) isSame; }
+    }
+    template _isSameAs(alias A)
+    {
+        template isSame(      B) { alias .isSame!(A, B) isSame; }
+        template isSame(alias B) { alias .isSame!(A, B) isSame; }
+    }
+}
+
+
+unittest
+{
+    alias isSame!int Tx;
+    static assert( Tx!int);
+    static assert(!Tx!200);
+    static assert(!Tx!std);
+
+    alias isSame!200 Vx;
+    static assert(!Vx!int);
+    static assert( Vx!200);
+    static assert(!Vx!std);
+
+    alias isSame!std Sx;
+    static assert(!Sx!int);
+    static assert(!Sx!200);
+    static assert( Sx!std);
+}
+
+unittest    // doc example
+{
+    alias isSame!double isDouble;
+
+    static assert( isDouble!double);
+    static assert(!isDouble!int   );
+}
+
+
+
+/**
+Returns $(D true) if and only if a compile-time entity $(D E) is a type.
+
+Example:
+--------------------
+alias meta.Seq!(int, "x",
+             double, "y",
+             string, "z") mixed;
+
+// Filter out the types.
+alias meta.filter!(meta.isType, mixed) Types;
+static assert(is(Types == meta.Seq!(int, double, string)));
+--------------------
+ */
+template isType(E)
+{
+    enum isType = true;
+}
+
+/// ditto
+template isType(alias E)
+{
+    enum isType = is(E);
+}
+
+
+unittest
+{
+    // Basic & qualified types.
+    static assert(isType!(          int));
+    static assert(isType!(const     int));
+    static assert(isType!(shared    int));
+    static assert(isType!(immutable int));
+
+    // User-defined types.
+    enum   Enum   { a }
+    struct Struct {}
+    union  Union  {}
+    class  Class  {}
+    static assert(isType!Enum  );
+    static assert(isType!Struct);
+    static assert(isType!Union );
+    static assert(isType!Class );
+}
+
+
+
+/* undocumented */
+template isValue(alias E)
+{
+    static if (is(typeof(E) T) && !is(T == void))
+    {
+        enum isValue = EntityTraits!E.isValue;
+    }
+    else
+    {
+        enum isValue = false;
+    }
+}
+
+
+/* undocumented */
+template isSymbol(alias E)
+{
+    enum isSymbol = EntityTraits!E.isSymbol;
+}
+
+unittest
+{
+    static immutable int v = 20;
+    enum k = 30;
+    static assert( isValue !(v));
+    static assert( isValue !(k));
+
+    // CTFE'able properties should be considered as symbols
+    struct S
+    {
+        static @property int symbol()
+        {
+            return 10;
+        }
+    }
+    static assert(!isValue !(S.symbol));
+    static assert( isSymbol!(S.symbol));
+}
+
+
+
+/* undocumented (for internal use) */
+template EntityTraits(entity...)
+{
+    enum string mangleof = entity.length ? stripTagM((Tag!entity*).mangleof)
+                                         : "";
+    static if (entity.length == 1)
+    {
+        enum
+        {
+            isType   = (mangleof[0] == 'T'),
+            isValue  = (mangleof[0] == 'V'),
+            isSymbol = (mangleof[0] == 'S'),
+        }
+        static assert(isType || isValue || isSymbol);
+    }
+    alias entity expand;
+}
+
+private pure nothrow @safe
+{
+    string stripTagM(in string mangle)
+    {
+        enum
+        {
+            prefix = "PS3std8internal4meta4meta",
+            midfix = "__T3Tag",
+            suffix =    "3Tag",
+        }
+        size_t from = prefix.length
+                    + solveLogL(mangle.length - prefix.length
+                                              - suffix.length)
+                    + midfix.length;
+        return mangle[from .. $ - suffix.length - 1];
+    }
+
+    int solveLogL(in size_t N)
+    {
+        int k = 1;
+        for (size_t pow10k = 10; N >= pow10k + k + 1; pow10k *= 10)
+            ++k;
+        return k;
+    }
+}
+
+unittest
+{
+    alias EntityTraits!int intTr;
+    static assert(intTr.mangleof == "Ti");
+    static assert(intTr.isType);
+
+    enum string value = "\x20\x40\x60";
+    alias EntityTraits!value valueTr;
+    static assert(valueTr.mangleof == "VAyaa3_204060");
+    static assert(valueTr.isValue);
+
+    struct S
+    {
+        static @property int symbol() { return 0; }
+    }
+    alias EntityTraits!(S.symbol) symbolTr;
+    static assert(symbolTr.mangleof[$ - 14 .. $] == "1S6symbolFNdZi");
+    static assert(symbolTr.isSymbol);
+}
+
+
+
+/* undocumented */
+template pseudoLess(entities...)
+{
+    // Gives strict weak ordering to every compile-time entity.
+    enum pseudoLess = (Tag!(entities[0])*).mangleof <
+                      (Tag!(entities[1])*).mangleof;
+}
+
+unittest
+{
+    static assert(pseudoLess!(10, 20));
+    static assert(pseudoLess!(10, -5)); // Yes
+    static assert(pseudoLess!(int, 5));
+
+    alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
+    alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
+    static assert(is(Tag!s1 == Tag!(double, int, 10, 20, "x", "y")));
+    static assert(is(Tag!s2 == Tag!(double, int, 10, 20, "x", "y")));
+}
+
+
+// TODO: sequence-vs-sequence comparison using Tag
+
+
+
+//----------------------------------------------------------------------------//
+// Meta Meta-Templates
+//----------------------------------------------------------------------------//
+
+
+/**
+Transforms a string representing an expression into a unary template.
+
+Params:
+ fun = Expression string or template declaration.  The string may use
+       named parameter aliases $(D a) and $(D A).
+
+Returns:
+ Unary template that evaluates $(D fun).
+
+Example:
+--------------------
+alias meta.unaryT!"const A" Constify;
+static assert(is(Constify!int == const int));
+
+alias meta.unaryT!"a.length" lengthof;
+static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
+--------------------
+ */
+template unaryT(string fun)
+{
+    alias unaryTGen!fun._ unaryT;
+}
+
+/// ditto
+template unaryT(alias fun)
+{
+    alias fun unaryT;
+}
+
+
+private template unaryTGen(string expr)
+{
+    template _(      a) { alias eval!a._ _; }
+    template _(alias a) { alias eval!a._ _; }
+
+    template eval(args...)
+    {
+        alias Id!(args[0]) a, A;
+        mixin("alias Id!("~ expr ~") _;");
+    }
+}
+
+
+unittest
+{
+    alias unaryT!"a + 1" increment;
+    static assert(increment!10 == 11);
+    static assert(isSame!(unaryT!increment, increment));
+
+    alias unaryT!"A*" Pointify;
+    static assert(is(Pointify!int == int*));
+    static assert(isSame!(unaryT!Pointify, Pointify));
+}
+
+unittest    // doc examples
+{
+    alias unaryT!"const A" Constify;
+    static assert(is(Constify!int == const int));
+
+    alias unaryT!"a.length" lengthof;
+    static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
+}
+
+
+
+/**
+Transforms a string representing an expression into a binary template.
+
+Params:
+ fun = Expression string or template declaration.  The string may use
+       named aliases $(D a) and $(D A) as the first parameter, $(D b)
+       and $(D B) as the second parameter.
+
+Returns:
+ Binary template that evaluates $(D fun).
+
+Example:
+--------------------
+alias meta.binaryT!"a + B.sizeof" accumSize;
+enum n1 = accumSize!( 0,    int);
+enum n2 = accumSize!(n1, double);
+enum n3 = accumSize!(n2,  short);
+static assert(n3 == 4 + 8 + 2);
+--------------------
+ */
+template binaryT(string fun)
+{
+    alias binaryTGen!fun._ binaryT;
+}
+
+/// ditto
+template binaryT(alias fun)
+{
+    alias fun binaryT;
+}
+
+
+private template binaryTGen(string expr)
+{
+    template _(      a,       b) { alias eval!(a, b)._ _; }
+    template _(      a, alias b) { alias eval!(a, b)._ _; }
+    template _(alias a,       b) { alias eval!(a, b)._ _; }
+    template _(alias a, alias b) { alias eval!(a, b)._ _; }
+
+    template eval(args...)
+    {
+        alias Id!(args[0]) a, A;
+        alias Id!(args[1]) b, B;
+        mixin("alias Id!("~ expr ~") _;");
+    }
+}
+
+
+unittest    // doc example
+{
+    alias binaryT!"a + B.sizeof" accumSize;
+    enum n1 = accumSize!( 0,    int);
+    enum n2 = accumSize!(n1, double);
+    enum n3 = accumSize!(n2,  short);
+    static assert(n3 == 4 + 8 + 2);
+}
+
+
+
+/**
+Transforms a string representing an expression into a variadic template.
+The expression can read variadic arguments via $(D args).
+
+The expression can also use named parameters as $(D meta.unaryT), but
+the number of implicitly-named parameters is limited up to eight:
+$(D a, b, c, d, e, f, g) and $(D h) (plus capitalized ones) depending
+on the number of arguments.
+
+Params:
+ fun = Expression string or template declaration.  The string may use
+       named parameters $(D a) to $(D h), $(D A) to $(D H) and $(D args).
+
+Returns:
+ Variadic template that evaluates $(D fun).
+
+Example:
+--------------------
+alias meta.variadicT!"a" takeFront;
+
+static assert(takeFront!(1, 2, 3) == 1);
+static assert(takeFront!("pq", 8) == "pq");
+--------------------
+ */
+template variadicT(string fun)
+{
+    alias variadicTGen!fun._ variadicT;
+}
+
+/// ditto
+template variadicT(alias fun)
+{
+    alias fun variadicT;
+}
+
+
+private template variadicTGen(string expr)
+{
+    template _(args...)
+    {
+        alias eval!args._ _;
+    }
+
+    template eval(args...)
+    {
+        mixin parameters!(0, +args.length);
+        mixin("alias Id!("~ expr ~") _;");
+    }
+
+    // Inject named parameter aliases a-h.
+    template parameters(size_t i, size_t n)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin parameters!(i + 1, n);
+            mixin parameter !(i       );
+        }
+    }
+
+    template parameter(size_t i)
+    {
+        mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
+                                   ~ "ABCDEFGH"[i] ~";");
+    }
+}
+
+
+unittest
+{
+    alias variadicT!"a + b*c" addMul;
+    static assert(addMul!(2,  3,  5) == 2 +  3* 5);
+    static assert(addMul!(7, 11, 13) == 7 + 11*13);
+
+    alias variadicT!"[ g, e, c, a, b, d, f, h ]" shuffle;
+    static assert(shuffle!(1,2,3,4,5,6,7,8) == [ 7,5,3,1,2,4,6,8 ]);
+
+    // Capitalized parameters
+    alias variadicT!"const(B)[A]" MakeConstAA;
+    static assert(is(MakeConstAA!(int, double) == const(double)[int]));
+    static assert(is(MakeConstAA!(int, string) == const(string)[int]));
+
+    alias variadicT!"pack!(G, E, C, A, B, D, F, H)" Shuffle;
+    static assert(is(Shuffle!(int, double, string, bool,
+                              dchar, void*, short, byte)
+                     == pack!(short, dchar, string, int,
+                              double, bool, void*, byte)));
+
+    // Mixing capitalized and non-capitalized parameters
+    alias variadicT!"A[b][c]" Make2D;
+    static assert(is(Make2D!(   int, 10, 20) ==    int[10][20]));
+    static assert(is(Make2D!(double, 30, 10) == double[30][10]));
+
+    // args
+    alias variadicT!"+args.length" numberof;
+    static assert(numberof!(1,2,3,4,5,6,7,8,9) == 9);
+}
+
+unittest    // doc example
+{
+    alias variadicT!"a" takeFront;
+
+    static assert(takeFront!(1, 2, 3) == 1);
+    static assert(takeFront!("pq", 8) == "pq");
+}
+
+
+
+/**
+$(D meta.bindFront) binds $(D front) as the leftmost parameters of a
+template $(D fun).  $(D meta.bindBack) binds $(D back) as the rightmost
+parameters.
+
+Params:
+   fun = Template or expression string.  Expression string is
+         transformed to a variadic template using $(D meta.variadicT).
+ front = Zero or more template instantiation arguments to bind.
+  back = ditto
+
+Returns:
+ A template that instantiates $(D fun) with the bound parameters and
+ additional ones.
+
+Examples:
+--------------------
+template compare(T, U)
+{
+    enum compare = T.sizeof < U.sizeof;
+}
+
+// Bind T=int and U=int, respectively.
+alias meta.bindFront!(compare, int) isLargerThanInt; // compare!(int, ...)
+alias meta.bindBack!(compare, int) isSmallerThanInt; // compare!(..., int)
+
+// Usual template instantiations work.
+static assert( isLargerThanInt!double);
+static assert(!isLargerThanInt!short );
+
+static assert(!isSmallerThanInt!double);
+static assert( isSmallerThanInt!short );
+--------------------
+ */
+template bindFront(alias fun, front...)
+{
+    template bindFront(rest...)
+    {
+        alias fun!(front, rest) bindFront;
+    }
+}
+
+/// ditto
+template bindFront(string fun, front...)
+{
+    alias bindFront!(variadicT!fun, front) bindFront;
+}
+
+/// ditto
+template bindBack(alias fun, back...)
+{
+    template bindBack(args...)
+    {
+        alias fun!(args, back) bindBack;
+    }
+}
+
+/// ditto
+template bindBack(string fun, back...)
+{
+    alias bindBack!(variadicT!fun, back) bindBack;
+}
+
+
+unittest    // template
+{
+    alias bindFront!(Seq) frontEmpty;
+    alias bindBack !(Seq)  backEmpty;
+    static assert(frontEmpty!().length == 0);
+    static assert( backEmpty!().length == 0);
+    static assert([ frontEmpty!(1,2,3) ] == [ 1,2,3 ]);
+    static assert([  backEmpty!(1,2,3) ] == [ 1,2,3 ]);
+
+    alias bindFront!(Seq, 1,2,3) front123;
+    alias bindBack !(Seq, 1,2,3)  back123;
+    static assert([ front123!() ] == [ 1,2,3 ]);
+    static assert([  back123!() ] == [ 1,2,3 ]);
+    static assert([ front123!(4,5,6) ] == [ 1,2,3,4,5,6 ]);
+    static assert([  back123!(4,5,6) ] == [ 4,5,6,1,2,3 ]);
+}
+
+unittest    // string
+{
+    alias bindFront!"a - b" subF;
+    alias bindBack !"a - b" subB;
+    static assert(subF!(5, 3) == 2);
+    static assert(subB!(5, 3) == 2);
+
+    alias bindFront!("a - b", 5) sub5b;
+    alias bindBack !("a - b", 5) suba5;
+    static assert(sub5b!(7) == -2);
+    static assert(suba5!(7) ==  2);
+}
+
+
+
+/**
+Creates a predicate template that inverts the result of the given one.
+
+Params:
+ pred = Predicate template or expression string to invert.  The result
+        must be a compile-time value that is implicitly convertible to
+        $(D bool) in conditional expressions.
+
+Returns:
+ Template that evaluates $(D pred) and returns an inverted result.
+
+Example:
+ Passing an inverted predicate to the $(D meta.countBy).
+--------------------
+template isStruct(T)
+{
+    enum isStruct = is(T == struct) || is(T == union);
+}
+
+struct S {}
+union  U {}
+class  C {}
+
+// Count non-struct types in the sequence.
+enum n = meta.countBy!(meta.not!isStruct,
+                       int, double, S, U, C);
+static assert(n == 3);
+--------------------
+ */
+template not(alias pred)
+{
+    template not(args...)
+    {
+        enum not = !pred!args;
+    }
+}
+
+/// ditto
+template not(string pred)
+{
+    alias not!(variadicT!pred) not;
+}
+
+
+unittest    // template
+{
+    alias not!(isSame!int) notInt;
+    static assert( notInt!double);
+    static assert( notInt!"none");
+    static assert(!notInt!int   );
+
+    // double inverting
+    alias not!notInt isInt;
+    static assert(!isInt!double);
+    static assert(!isInt!"none");
+    static assert( isInt!int   );
+}
+
+unittest    // string
+{
+    alias not!"a == 5" notFive;
+    static assert( notFive!4);
+    static assert( notFive!6);
+    static assert(!notFive!5);
+
+    alias not!notFive isFive;
+    static assert(!isFive!4);
+    static assert(!isFive!6);
+    static assert( isFive!5);
+}
+
+unittest    // doc example
+{
+    alias unaryT!"is(A == struct) || is(A == union)" isStruct;
+    struct S {}
+    union  U {}
+    class  C {}
+
+    enum n = countBy!(not!isStruct,
+                      int, double, S, U, C);
+    static assert(n == 3);
+}
+
+
+/**
+Composes predicate templates with the logical $(D &&) operator.
+
+The predicates will be evaluated in the same order as passed to this
+template.  The evaluations are lazy; if one of the predicates is not
+satisfied, $(D andAnd) immediately returns $(D false) without evaluating
+the remaining predicates.
+
+Params:
+ preds = Zero or more predicate templates of the same arity.  This
+         argument may be empty; in that case, the resulting template
+         constantly evaluates to $(D true).
+
+Returns:
+ Variadic predicate template that determines if its arguments satisfy
+ all the predicates $(D preds).
+
+Example:
+--------------------
+template isIntegral(T)
+{
+    enum isIntegral = meta.any!(meta.isSame!T,
+                                byte, short, int, long,
+                                ubyte, ushort, uint, ulong);
+}
+
+// Look for a short integral type.
+alias meta.findBy!(meta.andAnd!(isIntegral,
+                                "A.sizeof < 4"),
+                   int, double, byte, string, void) result;
+static assert(is(result == meta.Seq!(byte, string, void)));
+--------------------
+ */
+template andAnd(preds...)
+{
+    template andAnd(args...)
+    {
+        enum andAnd = all!(applier!args, preds);
+    }
+}
+
+
+unittest    // doc example
+{
+    struct Scope
+    {
+        template isIntegral(T)
+        {
+            enum isIntegral = meta.any!(meta.isSame!T,
+                                        byte, short, int, long,
+                                        ubyte, ushort, uint, ulong);
+        }
+    }
+    alias meta.findBy!(meta.andAnd!(Scope.isIntegral,
+                                    "A.sizeof < 4"),
+                       int, double, byte, string, void) result;
+    static assert(is(result == meta.Seq!(byte, string, void)));
+}
+
+
+
+/**
+Composes predicate templates with the logical $(D ||) operator.
+
+The predicates will be evaluated in the same order as passed to this
+template.  The evaluations are lazy; if one of the predicates is
+satisfied, $(D orOr) immediately returns $(D true) without evaluating
+the remaining predicates.
+
+Params:
+ preds = Zero or more predicate templates of the same arity.  This
+         argument may be empty; in that case, the resulting template
+         constantly evaluates to $(D false).
+
+Returns:
+ Variadic predicate template that determines if its arguments satisfy
+ at least one of the predicates $(D preds).
+
+Example:
+--------------------
+template isString(T)
+{
+    enum isString = is(T == string);
+}
+alias meta.orOr!("a == 0", isString) zeroOrInt;
+
+// Since 0 satisfies the first predicate, zeroOrInt does not evaluate
+// isString!(0) that will result in an error.
+static assert(zeroOrInt!0);
+--------------------
+ */
+template orOr(preds...)
+{
+    template orOr(args...)
+    {
+        enum orOr = any!(applier!args, preds);
+    }
+}
+
+
+unittest
+{
+}
+
+unittest    // doc example
+{
+    struct Scope
+    {
+        template isString(T)
+        {
+            enum isString = is(T == string);
+        }
+    }
+    alias meta.orOr!("a == 0", Scope.isString) zeroOrInt;
+    static assert(zeroOrInt!0);
+}
+
+
+
+/**
+.
+
+Params:
+ templates = .
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template compose(templates...)
+{
+    template compose()
+    {
+        // TODO
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/* undocumented (for internal use) */
+template applier(args...)
+{
+    template applier(alias templat)
+    {
+        alias apply!(templat, args) applier;
+    }
+}
+
+unittest
+{
+    alias applier!() empty;
+    static assert(is(empty!Seq == Seq!()));
+    static assert(is(empty!pack == pack!()));
+
+    alias applier!(int, 100) int100;
+    alias int100!"A" K;
+    static assert(is(int100!pack == pack!(int, 100)));
+    static assert(is(int100!"A" == int));
+}
+
+
+/* undocumented (for internal use) */
+template apply(alias templat, args...)
+{
+    alias templat!args apply;
+}
+
+template apply(string expr, args...)
+{
+    alias apply!(variadicT!expr, args) apply;
+}
+
+
+
+//----------------------------------------------------------------------------//
+// Sequence Generation
+//----------------------------------------------------------------------------//
+
+
+/**
+Expands a compile-time array to a sequence of the elements.
+
+Params:
+ arr = Compile-time expression of an array.  The array can be dynamic or
+       static.  The length and the elements must be known at compile-time.
+
+Returns:
+ .
+
+Example:
+--------------------
+ .
+--------------------
+ */
+template expand(alias arr)
+    if (isCompileTimeArray!arr)
+{
+    static if (arr.length == 0)
+    {
+        alias Seq!() expand;
+    }
+    else static if (arr.length == 1)
+    {
+        alias Seq!(arr[0]) expand;
+    }
+    else
+    {
+        // Halving array reduces the recursion depth.
+        alias Seq!(expand!(arr[ 0  .. $/2]),
+                   expand!(arr[$/2 ..  $ ])) expand;
+    }
+}
+
+private template isCompileTimeArray(alias arr)
+{
+    static if (is(typeof(arr) E : E[]))
+    {
+        enum isCompileTimeArray =
+                // Length and elements must be known.
+                __traits(compiles, int[ arr[0] == arr[$ - 1] ]);
+    }
+    else
+    {
+        enum isCompileTimeArray = false;
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Yields a sequence of numbers starting from $(D beg) to $(D end) with the
+specified $(D step).
+
+Params:
+  beg = Compile-time numeral value ($(D 0) if not specified).  The
+        resulting sequence starts with $(D beg) if not empty.
+
+  end = Compile-time numeral value.  The resulting sequence stops before
+        $(D end) and never contain it.
+
+ step = Compile-time numeral value ($(D 1) if not specified).  The
+        resulting sequence increases or decreases by $(D step).  The
+        _step may not be zero.
+
+Returns:
+ Sequence of compile-time numbers starting from $(D beg) to $(D end),
+ increasing/decreasing by $(D step).  The type of each element is the
+ common type of $(D beg) and $(D end).
+
+Examples:
+ Using $(D meta.iota) to fill a constant array:
+--------------------
+static immutable int[] sequence = [ meta.iota!(9, 99, 9) ];
+static assert(sequence == [ 9, 18, 27, 36, 45, 54, 63, 72, 81, 90 ]);
+--------------------
+
+ Next example shows a static foreach.  The variable $(D i) in the
+ following code holds a compile-time value.
+--------------------
+// Declare arrays of int[4], int[5], int[6] and int[7].
+foreach (i; meta.iota!(4, 8))
+{
+    int[i] array;
+}
+--------------------
+ */
+template iota(alias beg, alias end, alias step)
+    if (step != 0)
+{
+    // FIXME
+
+    static if (beg >= end)
+    {
+        alias Seq!() iota;
+    }
+    else static if (beg + step >= end)
+    {
+        // Unary '+' converts the symbol beg to a literal value.
+        alias Seq!(+beg) iota;
+    }
+    else
+    {
+        // To reduce the recursion depth.
+        alias Seq!(iota!(beg, _iotaMid!(beg, end)     ),
+                   iota!(     _iotaMid!(beg, end), end)) iota;
+    }
+}
+
+/// ditto
+template iota(alias beg, alias end)
+{
+    alias iota!(beg, end, cast(typeof(beg)) 1) iota;
+}
+
+/// ditto
+template iota(alias end)
+{
+    alias iota!(cast(typeof(end)) 0, end) iota;
+}
+
+
+// iota
+private template _iotaMid(alias beg, alias end)
+{
+    // Computes the proper mid value.
+    enum typeof(beg) _iotaMid = beg + (end - beg) / 2;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+TODO
+
+Params:
+    n = .
+  fun = .
+ seed = .
+
+Returns:
+ .
+
+Example:
+--------------------
+// Pointers = (int, int*, int**, int***)
+alias meta.iterate!(4, q{ A* }, int) Pointers;
+--------------------
+ */
+template iterate(size_t n, alias fun, seed...)
+{
+}
+
+// Deal with expression strings.
+template iterate(size_t n, string fun, seed...)
+{
+    alias iterate!(n, unaryT!fun, seed) iterate;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Creates a sequence in which $(D seq) repeats $(D n) times.
+
+Params:
+   n = The number of repetition.  May be zero.
+ seq = Sequence to _repeat.
+
+Returns:
+ Sequence composed of $(D n) $(D seq)s.  The empty sequence is returned
+ if $(D n) is zero or $(D seq) is empty.
+
+Example:
+ Filling a continuous region in a table with specific values.
+--------------------
+enum CharType { other, digit, alpha }
+
+static immutable CharType[256] charTypeTab =
+[
+    '0': meta.repeat!(10, CharType.digit),
+    'A': meta.repeat!(26, CharType.alpha),
+    'a': meta.repeat!(26, CharType.alpha),
+];
+static assert(charTypeTab['M'] == CharType.alpha);
+--------------------
+ */
+template repeat(size_t n, seq...)
+{
+    static if (n < 2 || seq.length == 0)
+    {
+        alias seq[0 .. n*$] repeat;
+    }
+    else
+    {
+        // Halving n reduces the recursion depth.
+        alias Seq!(repeat!(   n    / 2, seq),
+                   repeat!((n + 1) / 2, seq)) repeat;
+    }
+}
+
+
+unittest
+{
+    // degeneracy
+    static assert(is(repeat!(0) == Seq!()));
+    static assert(is(repeat!(1) == Seq!()));
+    static assert(is(repeat!(9) == Seq!()));
+    static assert(is(repeat!(0, int        ) == Seq!()));
+    static assert(is(repeat!(0, int, double) == Seq!()));
+
+    // basic
+    static assert(is(repeat!( 1, int, double) == Seq!(int, double)));
+    static assert(is(repeat!( 2, int, double) == Seq!(int, double,
+                                                      int, double)));
+    static assert(is(repeat!( 3, int, double) == Seq!(int, double,
+                                                      int, double,
+                                                      int, double)));
+    static assert(is(repeat!( 9, int) == Seq!(int, int, int, int,
+                                              int, int, int, int, int)));
+    static assert(is(repeat!(10, int) == Seq!(int, int, int, int, int,
+                                              int, int, int, int, int)));
+
+    // expressions
+    static assert([0, repeat!(0, 8,7), 0] == [0,                  0]);
+    static assert([0, repeat!(1, 8,7), 0] == [0, 8,7,             0]);
+    static assert([0, repeat!(3, 8,7), 0] == [0, 8,7,8,7,8,7,     0]);
+    static assert([0, repeat!(4, 8,7), 0] == [0, 8,7,8,7,8,7,8,7, 0]);
+}
+
+
+
+//----------------------------------------------------------------------------//
+// Topological Algorithms
+//----------------------------------------------------------------------------//
+
+
+/**
+Reverses the sequence $(D seq).
+
+Params:
+ seq = Sequence to _reverse.
+
+Returns:
+ $(D seq) in the _reverse order.  The empty sequence is returned if $(D seq)
+ is empty.
+
+Example:
+--------------------
+alias meta.reverse!(int, double, string) Rev;
+static assert(is(Rev == meta.Seq!(string, double, int)));
+--------------------
+ */
+template reverse(seq...)
+{
+    static if (seq.length < 2)
+    {
+        alias seq reverse;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias Seq!(reverse!(seq[$/2 ..  $ ]),
+                   reverse!(seq[ 0  .. $/2])) reverse;
+    }
+}
+
+
+unittest
+{
+    // degeneracy
+    static assert(is(reverse!() == Seq!()));
+
+    // basic
+    static assert(is(reverse!(int) == Seq!(int)));
+    static assert(is(reverse!(int, double) == Seq!(double, int)));
+    static assert(is(reverse!(int, double, string) ==
+                         Seq!(string, double, int)));
+    static assert(is(reverse!(int, double, string, bool) ==
+                         Seq!(bool, string, double, int)));
+
+    // expressions
+    static assert([0, reverse!(),        0] == [0,          0]);
+    static assert([0, reverse!(1),       0] == [0, 1,       0]);
+    static assert([0, reverse!(1,2),     0] == [0, 2,1,     0]);
+    static assert([0, reverse!(1,2,3),   0] == [0, 3,2,1,   0]);
+    static assert([0, reverse!(1,2,3,4), 0] == [0, 4,3,2,1, 0]);
+}
+
+
+
+/**
+Rotates $(D seq) by $(D n).  The result is, conceptually,
+$(D (seq[n .. $], seq[0 .. n])).
+
+Params:
+   n = The amount of rotation.  The sign determines the direction:
+       positive for left rotation and negative for right rotation.
+       This parameter can be zero or larger than $(D seq.length).
+ seq = Sequence to _rotate.
+
+Returns:
+ Sequence $(D seq) rotated by $(D n).  The empty sequence is returned
+ if $(D seq) is empty.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template rotate(sizediff_t n, seq...)
+{
+    static if (seq.length < 2)
+    {
+        alias seq rotate;
+    }
+    else
+    {
+        static if (n < 0)
+        {
+            alias rotate!(seq.length + n, seq) rotate;
+        }
+        else
+        {
+            alias Seq!(seq[n % $ .. $], seq[0 .. n % $]) rotate;
+        }
+    }
+}
+
+
+unittest
+{
+    alias rotate!(0) empty0;
+    alias rotate!(0, int) single0;
+    alias rotate!(0, int, double, string) triple0;
+    static assert(is( empty0 == Seq!()));
+    static assert(is(single0 == Seq!(int)));
+    static assert(is(triple0 == Seq!(int, double, string)));
+
+    alias rotate!(+2) empty2;
+    alias rotate!(+2, int) single2;
+    alias rotate!(+2, int, double, string) triple2;
+    static assert(is( empty2 == Seq!()));
+    static assert(is(single2 == Seq!(int)));
+    static assert(is(triple2 == Seq!(string, int, double)));
+
+    alias rotate!(-2) empty2rev;
+    alias rotate!(-2, int) single2rev;
+    alias rotate!(-2, int, double, string) triple2rev;
+    static assert(is( empty2rev == Seq!()));
+    static assert(is(single2rev == Seq!(int)));
+    static assert(is(triple2rev == Seq!(double, string, int)));
+}
+
+
+
+/**
+Picks up elements of sequence with _stride $(D n).
+
+Params:
+   n = Stride width.  $(D n) may not be zero.
+ seq = Sequence to _stride.
+
+Returns:
+ Sequence of $(D 0,n,2n,...)-th elements of the given sequence:
+ $(D (seq[0], seq[n], seq[2*n], ...)).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template stride(size_t n, seq...)
+    if (n >= 1)
+{
+    alias segmentWith!(_Front, n, seq) stride;
+}
+
+private template _Front(seq...)
+{
+    alias Id!(seq[0]) _Front;
+}
+
+unittest
+{
+    static assert(is(stride!(1) == Seq!()));
+    static assert(is(stride!(2) == Seq!()));
+    static assert(is(stride!(5) == Seq!()));
+
+    static assert(is(stride!(1, int, double, string) ==
+                        Seq!(   int, double, string)));
+}
+
+
+
+/**
+Splits sequence $(D seq) into segments of length $(D n).
+
+Params:
+   n = The size of each _segment. $(D n) may not be zero.
+ seq = Sequence to _segment.
+
+Returns:
+ Sequence of packed segments of length $(D n).  The last _segment can
+ be shorter than $(D n) if $(D seq.length) is not a multiple of $(D n).
+
+Example:
+ $(D meta.segment) would be useful to scan simple patterns out of
+ template parameters or other sequences.
+--------------------
+alias meta.Seq!(int,    "x", 10,
+                double, "y", 20) config;
+
+alias meta.segment!(3, config) patterns;
+static assert(meta.isSame!(patterns[0], meta.pack!(int,    "x", 10)));
+static assert(meta.isSame!(patterns[1], meta.pack!(double, "y", 20)));
+--------------------
+ */
+template segment(size_t n, seq...)
+    if (n >= 1)
+{
+    alias segmentWith!(pack, n, seq) segment;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Generalization of the $(D meta.segment).  It passes each segment to
+$(D fun) instead of the $(D meta.pack).
+
+Params:
+ fun = $(D n)-ary template.
+   n = The size of each _segment. $(D n) may not be zero.
+ seq = Sequence to segment.
+
+Returns:
+ Sequence of the results of $(D fun) applied to each segment.
+
+Example:
+ 
+--------------------
+--------------------
+ */
+template segmentWith(alias fun, size_t n, seq...)
+    if (n >= 1)
+{
+    static if (n == 1)
+    {
+        alias map!(fun, seq) segmentWith;
+    }
+    else
+    {
+        static if (seq.length == 0)
+        {
+            alias Seq!() segmentWith;
+        }
+        else static if (seq.length <= n)
+        {
+            alias Seq!(fun!seq) segmentWith;
+        }
+        else
+        {
+            // Halving seq reduces the recursion depth.
+            alias Seq!(segmentWith!(fun, n, seq[0 .. _segmentMid!($, n)     ]),
+                       segmentWith!(fun, n, seq[     _segmentMid!($, n) .. $]))
+                  segmentWith;
+        }
+    }
+}
+
+/// ditto
+template segmentWith(string fun, size_t n, seq...)
+    if (n >= 1)
+{
+    alias segmentWith!(variadicT!fun, n, seq) segmentWith;
+}
+
+
+// Computes the proper bisecting point.
+private template _segmentMid(size_t n, size_t k)
+{
+    enum _segmentMid = ((n + k - 1) / k / 2) * k;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+TODO
+
+Params:
+ seqs = 
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template interleave(seqs...)
+{
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+.
+
+Params:
+    i = .
+ seqs = .
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template transverse(size_t i, seqs...)
+    if (all!(andAnd!(isPacked, isLongerThan!i), seqs))
+{
+    static if (seqs.length == 1)
+    {
+        alias Seq!(seqs[0].expand[i]) transverse;
+    }
+    else
+    {
+        // Halving seqs reduces the recursion depth.
+        alias Seq!(transverse!(i, seqs[ 0  .. $/2]),
+                   transverse!(i, seqs[$/2 ..  $ ])) transverse;
+    }
+}
+
+// Degeneracy case.
+template transverse(size_t i) { alias Seq!() transverse; }
+
+
+private template isLongerThan(size_t i)
+{
+    template isLongerThan(alias seq)
+    {
+        enum isLongerThan = (i < seq.length);
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+.
+
+Params:
+ seqs = Sequence of packed sequences.
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template zip(seqs...)
+    if (all!(isPacked, seqs))
+{
+    alias zipWith!(pack, seqs) zip;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Generalization of the $(D meta.zip).  It zippes elements with $(D fun)
+instead of the $(D meta.pack).
+
+Params:
+  fun = Template or expression string of arity $(D seqs.length).
+ seqs = Sequence of packed sequences.
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template zipWith(alias fun, seqs...)
+    if (all!(isPacked, seqs))
+{
+    alias map!(_zippingTransverser!(fun, seqs), iota!(minLength!seqs))
+          zipWith;
+}
+
+/// ditto
+template zipWith(string fun, seqs...)
+    if (all!(isPacked, seqs))
+{
+    alias zipWith!(variadicT!fun, seqs) zipWith;
+}
+
+
+private template _zippingTransverser(alias fun, seqs...)
+{
+    template _zippingTransverser(size_t i)
+    {
+        alias fun!(transverse!(i, seqs)) _zippingTransverser;
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Generates a sequence of the _cartesian product of packed sequences.
+
+Params:
+ seqs = One or more packed sequences.
+
+Returns:
+ Sequence of packed sequences, each of which is composed of a combination
+ of the elements from the input sequences.  The empty sequence is returned
+ if at least one sequence in $(D seqs) is empty.
+
+Example:
+--------------------
+// Test nine cases of floating-point to string conversions.
+foreach (Comb; meta.cartesian!(meta.pack!(float, double, real),
+                               meta.pack!(string, wstring, dstring)))
+{
+    alias Comb.expand[0] Source;
+    alias Comb.expand[1] Target;
+
+    Source value = 0;
+    assert(std.conv.to!Target(value) == "0");
+}
+--------------------
+ */
+template cartesian(seqs...)
+    if (seqs.length >= 1 && all!(isPacked, seqs))
+{
+    alias _cartesian!seqs.Result cartesian;
+}
+
+
+private
+{
+    template _cartesian(alias first)
+    {
+        alias map!(pack, first.expand) Result;
+    }
+
+    template _cartesian(alias first, rest...)
+    {
+        alias _cartesian!rest.Result subCartesian;
+
+        // Insert each element of 'first' at the front of each
+        // subcartesian product tuples.
+        template consMap(car...)
+        {
+            alias map!(bindBack!(insertFront, car), subCartesian) consMap;
+        }
+        alias map!(consMap, first.expand) Result;
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+//----------------------------------------------------------------------------//
+// Transformation Algorithms
+//----------------------------------------------------------------------------//
+
+
+/**
+Transforms a sequence $(D seq) into $(D (fun!(seq[0]), fun!(seq[1]), ...)).
+
+Params:
+ fun = Unary template or expression string that maps each element of
+       $(D seq) into another compile-time entity.  Its result may also
+       be a sequence of any length.
+ seq = Sequence of compile-time entities.
+
+Returns:
+ .
+
+Examples:
+ Map types into pointers.
+--------------------
+alias meta.map!(q{ A* }, int, double, void*) PP;
+static assert(is(PP[0] ==    int*));
+static assert(is(PP[1] == double*));
+static assert(is(PP[2] ==  void**));
+--------------------
+
+ Doubling elements by passing a template returning a sequence.
+--------------------
+// Twice = (int, int, bool, bool, string, string)
+alias meta.map!(meta.bindFront!(meta.repeat, 2),
+                int, bool, string) Twice;
+--------------------
+ */
+template map(alias fun, seq...)
+{
+    static if (seq.length == 1)
+    {
+        alias Seq!(fun!(seq[0])) map;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias Seq!(map!(fun, seq[ 0  .. $/2]),
+                   map!(fun, seq[$/2 ..  $ ])) map;
+    }
+}
+
+/// ditto
+template map(string fun, seq...)
+{
+    alias .map!(unaryT!fun, seq) map;
+}
+
+
+// Degeneracy case.
+template map(alias fun) { alias Seq!() map; }
+
+
+unittest
+{
+}
+
+
+
+/**
+Filters those items satisfying $(D pred) out of a sequence $(D seq).
+
+Params:
+ fun = Unary template or expression string that maps a compile-time
+       entity into a boolean value.
+ seq = Sequence of compile-time entities.
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template filter(alias pred, seq...)
+{
+    static if (seq.length < 2)
+    {
+        static if (seq.length == 0 || pred!(seq[0]))
+        {
+            alias seq filter;
+        }
+        else
+        {
+            alias Seq!() filter;
+        }
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias Seq!(filter!(pred, seq[ 0  .. $/2]),
+                   filter!(pred, seq[$/2 ..  $ ])) filter;
+    }
+}
+
+/// ditto
+template filter(string pred, seq...)
+{
+    alias .filter!(unaryT!pred, seq) filter;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Removes all occurrences of $(D E) in $(D seq).
+
+Params:
+   E = Compile-time entity to remove from $(D seq).
+ seq = .
+
+Returns:
+ Sequence of elements of $(D seq) except $(D E).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template remove(E, seq...)
+{
+    alias removeBy!(isSame!E, seq) remove;
+}
+
+/// ditto
+template remove(alias E, seq...)
+{
+    alias removeBy!(isSame!E, seq) remove;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Removes any elements of $(D seq) satisfying the predicate $(D pred).
+
+Params:
+ pred = Unary predicate template or expression string that evaluates
+        each element of $(D seq) as a boolean value.
+  seq = .
+
+Returns:
+ Sequence of elements of $(D seq) not satisfying $(D pred).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template removeBy(alias pred, seq...)
+{
+    alias filter!(not!pred, seq) removeBy;
+}
+
+
+unittest
+{
+}
+
+
+
+// XXX: partitionBy?
+
+/**
+Partitions $(D seq) into two sequences $(D .accepted) and $(D .rejected)
+which do and do not satisfy $(D pred).
+
+Params:
+ pred = Unary predicate template or expression string.
+  seq = Sequence to _partition.
+
+Returns:
+ The two sequences $(D .accepted) and $(D .rejected).
+
+Example:
+ Partitioning a sequence of types into interface and others.
+--------------------
+class C {}
+interface I {}
+abstract class A {}
+
+alias meta.partition!(q{ is(A == interface) }, C, I, A) result;
+static assert(is(result.accepted == meta.Seq!(I   )));
+static assert(is(result.rejected == meta.Seq!(C, A)));
+--------------------
+ */
+template partition(alias pred, seq...)
+{
+    alias filter!(    pred, seq) accepted;
+    alias filter!(not!pred, seq) rejected;
+
+    static assert(accepted.length + rejected.length == seq.length);
+}
+
+
+unittest
+{
+}
+
+
+
+// XXX: replaceBy?
+
+/**
+Replaces all occurrences of $(D From) in $(D seq) with $(D To).
+
+Params:
+ From = Compile-time entity to remove from $(D seq).
+   To = Compile-time entity to insert in place of $(D From).
+  seq = Sequence to perform replacement.
+
+Returns:
+ Sequence $(D seq) in which all occurrences of $(D From) are replaced
+ with $(D To).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template replace(From, To, seq...)
+{
+    alias map!(_replacer!(From, To), seq) replace;
+}
+
+/// ditto
+template replace(alias From, To, seq...)
+{
+    alias map!(_replacer!(From, To), seq) replace;
+}
+
+/// ditto
+template replace(From, alias To, seq...)
+{
+    alias map!(_replacer!(From, To), seq) replace;
+}
+
+/// ditto
+template replace(alias From, alias To, seq...)
+{
+    alias map!(_replacer!(From, To), seq) replace;
+}
+
+
+private template _replacer(FromTo...)
+{
+    template _replacer(E...)
+    {
+        static if (isSame!(E[0], FromTo[0]))
+        {
+            alias FromTo[1 .. $] _replacer;
+        }
+        else
+        {
+            alias E              _replacer;
+        }
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+// XXX: sort and sortBy?
+
+
+/**
+Stable _sort for compile-time entities.
+
+Params:
+ comp = Binary predicate template or expression string that gives an
+        ordering to elements of $(D seq).  It typically works as the
+        $(D <) operator to arrange the result in increasing order.
+  seq = Sequence to _sort.
+
+Returns:
+ Sequence $(D seq) sorted in terms of the ordering $(D comp).
+
+ The sorting algorithm is stable, so the relative order of equivalent
+ elements of $(D seq) will be preserved.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template sortBy(alias comp, seq...)
+{
+    static if (seq.length < 2)
+    {
+        alias seq sortBy;
+    }
+    else
+    {
+         alias _Merger!comp.Merge!(sortBy!(comp, seq[ 0  .. $/2]))
+                            .With!(sortBy!(comp, seq[$/2 ..  $ ])) sortBy;
+    }
+}
+
+/// ditto
+template sortBy(string comp, seq...)
+{
+    alias sortBy!(binaryT!comp, seq) sortBy;
+}
+
+
+private template _Merger(alias comp)
+{
+    template Merge()
+    {
+        template With(B...)
+        {
+            alias B With;
+        }
+    }
+
+    template Merge(A...)
+    {
+        template With()
+        {
+            alias A With;
+        }
+
+        template With(B...)
+        {
+            // Comparison must be in this order for stability.
+            static if (comp!(B[0], A[0]))
+            {
+                alias Seq!(B[0], Merge!(A        ).With!(B[1 .. $])) With;
+            }
+            else
+            {
+                alias Seq!(A[0], Merge!(A[1 .. $]).With!(B        )) With;
+            }
+        }
+    }
+}
+
+
+unittest
+{
+    alias Seq!(
+         73,  42,  71,   8, 194, 200,  57, 163,  31, 166,   7,
+        217,  64, 136,  14,  52,  45, 132, 239, 111,  51,   1,
+          3,  40, 227,  44, 190, 133,   5,  40, 226,  61,  57,
+        255, 221,  85, 123, 152, 110,  17,   5,  99, 119, 222,
+         95,  22,  82,  91, 211, 208, 149, 174, 183, 235, 153) rand;
+    alias sortBy!("a < b", rand) inc;
+    alias sortBy!("a > b", rand) dec;
+    static assert(isSortedBy!("a < b", inc));
+    static assert(isSortedBy!("a > b", dec));
+    static assert([ reverse!inc ] == [ dec ]);
+}
+
+
+
+/**
+Determines if $(D seq) is sorted in terms of the ordering $(D comp).
+
+Params:
+ comp = .
+  seq = .
+
+Returns:
+ .  $(D true) is returned if $(D seq.length) is less than $(D 2).
+
+Example:
+--------------------
+ .
+--------------------
+ */
+template isSortedBy(alias comp, seq...)
+{
+    static if (seq.length < 2)
+    {
+        enum isSortedBy = true;
+    }
+    else
+    {
+        // Comparison must be in this order, or false negative happens.
+        static if (comp!(seq[$/2], seq[$/2 - 1]))
+        {
+            enum isSortedBy = false;
+        }
+        else
+        {
+            // Halving seq reduces the recursion depth.
+            enum isSortedBy = isSortedBy!(comp, seq[ 0  .. $/2]) &&
+                              isSortedBy!(comp, seq[$/2 ..  $ ]);
+        }
+    }
+}
+
+/// ditto
+template isSortedBy(string comp, seq...)
+{
+    alias isSortedBy!(binaryT!comp, seq) isSortedBy;
+}
+
+
+unittest
+{
+}
+
+
+
+// XXX: uniq and removeDuplicates?
+
+/**
+Removes any consecutive group of duplicate elements in $(D seq) except
+the first occurrence of each group.
+
+Params:
+ seq = Zero or more compile-time entities.
+
+Returns:
+ $(D seq) without any consecutive duplicate elements.
+
+Examples:
+--------------------
+alias meta.uniq!(1, 2, 3, 3, 4, 4, 4, 2, 2) result;
+static assert([ result ] == [ 1, 2, 3, 4, 2 ]);
+--------------------
+ */
+template uniq(seq...)
+{
+    alias uniqBy!(isSame, seq) uniq;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Generalization of the $(D meta.uniq).
+ */
+template uniqBy(alias eq, seq...)
+{
+    static if (seq.length < 2)
+    {
+        alias seq uniqBy;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        static if (eq!(seq[$/2 - 1], seq[$/2]))
+        {
+            alias Seq!(uniqBy!(eq, seq[0 .. $/2]),
+                       uniqBy!(eq, seq[$/2 .. $])[1 .. $]) uniqBy;
+        }
+        else
+        {
+            alias Seq!(uniqBy!(eq, seq[0 .. $/2]),
+                       uniqBy!(eq, seq[$/2 .. $])) uniqBy;
+        }
+    }
+}
+
+/// ditto
+template uniqBy(string eq, seq...)
+{
+    alias uniqBy!(binaryT!eq, seq) uniqBy;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Removes all duplicate elements in $(D seq) except the first occurrence.
+
+Params:
+ seq = Sequence to eliminate duplicate elements.
+
+Returns:
+ Sequence $(D seq) without duplicate elements.
+ */
+template removeDuplicates(seq...)
+{
+    alias removeDuplicatesBy!(isSame, seq) removeDuplicates;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Generalization of the $(D meta.removeDups).  It detects duplicate
+elements with a specified equality instead of the $(D meta.isSame).
+
+Params:
+  eq = Binary template that compares parameters for equality.
+ seq = Sequence to eliminate duplicates.
+
+Returns:
+ Sequence $(D seq) without duplicates in terms of $(D eq).
+ */
+template removeDuplicatesBy(alias eq, seq...)
+{
+    static if (seq.length < 2)
+    {
+        alias seq removeDuplicatesBy;
+    }
+    else
+    {
+        alias Seq!(seq[0], removeDuplicatesBy!(
+                               removeBy!(bindFront!(eq, seq[0]),
+                                         seq[1 .. $])))
+              removeDuplicatesBy;
+    }
+}
+
+unittest
+{
+}
+
+
+
+//----------------------------------------------------------------------------//
+// Iteration & Query Algorithms
+//----------------------------------------------------------------------------//
+
+
+/**
+Reduces the sequence $(D seq) by successively applying a binary template
+$(D fun) over elements, with an initial state $(D Seed):
+--------------------
+fun!( ... fun!(fun!(Seed, seq[0]), seq[1]) ..., seq[$ - 1])
+--------------------
+
+Params:
+  fun = Binary template.
+ Seed = The initial state.
+  seq = Sequence of zero or more compile-time entities to _reduce.
+
+Returns:
+ The last result of $(D fun), or $(D Seed) if $(D seq) is empty.
+
+Example:
+ Computing the net accumulation of the size of types.
+--------------------
+alias meta.Seq!(int, double, short, bool, dchar) Types;
+
+// Note: 'a' gets the "current sum" and 'B' gets a type in the sequence.
+enum size = meta.reduce!(q{ a + B.sizeof }, 0, Types);
+static assert(size == 4 + 8 + 2 + 1 + 4);
+--------------------
+
+See_Also:
+ $(D scan), a variant that also returns intermediate results.
+ */
+template reduce(alias fun, Seed, seq...)
+{
+    static if (seq.length == 1)
+    {
+        alias fun!(Seed, seq[0]) reduce;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias reduce!(fun, reduce!(fun, Seed, seq[ 0  .. $/2]),
+                                              seq[$/2 ..  $ ]) reduce;
+    }
+}
+
+// Degeneracy case.
+template reduce(alias fun, Seed) { alias Seed reduce; }
+
+
+/// ditto
+template reduce(alias fun, alias Seed, seq...)
+{
+    static if (seq.length == 1)
+    {
+        alias fun!(Seed, seq[0]) reduce;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias reduce!(fun, reduce!(fun, Seed, seq[ 0  .. $/2]),
+                                              seq[$/2 ..  $ ]) reduce;
+    }
+}
+
+// Degeneracy case.
+template reduce(alias fun, alias Seed) { alias Seed reduce; }
+
+
+// Hook expression strings
+template reduce(string fun, Seed, seq...)
+{
+    alias reduce!(binaryT!fun, Seed, seq) reduce;
+}
+
+template reduce(string fun, alias Seed, seq...)
+{
+    alias reduce!(binaryT!fun, Seed, seq) reduce;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as $(D meta.reduce), except this template returns the reduced
+result with history: intermediate results of $(D fun).
+
+Params:
+  fun = Binary template.
+ Seed = The initial state.
+  seq = Sequence of zero or more compile-time entities to reduce.
+
+Returns:
+ Sequence of the results of $(D fun) preceded by $(D Seed).
+
+Example:
+ Computing the sum of the size of types with history.
+--------------------
+alias meta.Seq!(int, double, short, bool, dchar) Types;
+
+alias meta.scan!(q{ a + b.sizeof }, 0, Types) sums;
+static assert([ sums ] == [ 0,
+                            0+4,
+                            0+4+8,
+                            0+4+8+2,
+                            0+4+8+2+1,
+                            0+4+8+2+1+4 ]);
+--------------------
+ Note that $(D sums[5]), or $(D sums[Types.length]), equals the result
+ of the example of $(D meta.reduce).
+ */
+template scan(alias fun, Seed, seq...)
+{
+    static if (seq.length == 0)
+    {
+        alias Seq!Seed scan;
+    }
+    else
+    {
+        // TODO(?) reduce the recursion depth
+        alias Seq!(Seed, scan!(fun, fun!(Seed, seq[0]), seq)) scan;
+    }
+}
+
+/// ditto
+template scan(alias fun, alias Seed, seq...)
+{
+    static if (seq.length == 0)
+    {
+        alias Seq!Seed scan;
+    }
+    else
+    {
+        alias Seq!(Seed, scan!(fun, fun!(Seed, seq[0]), seq)) scan;
+    }
+}
+
+
+// Hook expression strings
+template scan(string fun, Seed, seq...)
+{
+    alias scan!(binaryT!fun, Seed, seq) scan;
+}
+
+template scan(string fun, alias Seed, seq...)
+{
+    alias scan!(binaryT!fun, Seed, seq) scan;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Looks for the first "top" element in a sequence in terms of the
+comparison template $(D comp). This template is effectively the same
+as $(D meta.sort!(comp, seq)[0]).
+
+Params:
+ comp = Binary template or expression string that compares items in
+        the sequence for ordering.
+  seq = One or more compile-time entities.
+
+Example:
+ In the following example the $(D comp) argument works as the
+ greater-than operator, thus $(D meta.most) returns the largest element
+ in the sequence.
+--------------------
+alias meta.Seq!(int, bool, double, short) Types;
+
+// Take the largest type in the sequence: double.
+alias meta.most!(q{ a.sizeof > b.sizeof }, Types) Largest;
+static assert(is(Largest == double));
+--------------------
+ */
+template most(alias comp, seq...)
+    if (seq.length >= 1)
+{
+    alias reduce!(_more!comp, seq) most;
+}
+
+/// ditto
+template most(string comp, seq...)
+    if (seq.length >= 1)
+{
+    alias most!(binaryT!comp, seq) most;
+}
+
+
+private template _more(alias comp)
+{
+    template _more(pair...)
+    {
+        // Comparison must be in this order for stability.
+        static if (comp!(pair[1], pair[0]))
+        {
+            alias Id!(pair[1]) _more;
+        }
+        else
+        {
+            alias Id!(pair[0]) _more;
+        }
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/*
+Groundwork for find-family algorithms.
+
+Params:
+ pred = m-ary predicate template.
+    m = Size of chunk to find.
+ */
+template _findChunk(alias pred, size_t m)
+{
+    template index(seq...)
+        if (seq.length < m)
+    {
+        enum index = seq.length;    // not found
+    }
+
+    // Simple search.
+    template index(seq...)
+        if (m <= seq.length && seq.length < 2*m)
+    {
+        static if (pred!(seq[0 .. m]))
+        {
+            enum size_t index = 0;
+        }
+        else
+        {
+            enum size_t index = index!(seq[1 .. $]) + 1;
+        }
+    }
+
+    // Halve seq to reduce the recursion depth.  This specialization
+    // is just for that purpose and index() can work without this.
+    template index(seq...)
+        if (2*m <= seq.length)
+    {
+        static if (index!(seq[0 .. $/2 + m - 1]) < seq.length/2)
+        {
+            enum index = index!(seq[0 .. $/2 + m - 1]);
+        }
+        else
+        {
+            enum index = index!(seq[$/2 .. $]) + seq.length/2;
+        }
+    }
+}
+
+
+
+/**
+Looks for the first occurrence of $(D E) in $(D seq).
+
+Params:
+   E = Compile-time entity to look for.
+ seq = Sequence to _find.
+
+Returns:
+ Subsequence of $(D seq) after $(D E) (inclusive).  The empty sequence
+ is returned if $(D E) is not found.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template find(E, seq...)
+{
+    alias findBy!(isSame!E, seq) find;
+}
+
+/// ditto
+template find(alias E, seq...)
+{
+    alias findBy!(isSame!E, seq) find;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as $(D find), but looks for an item that satisfies a unary predicate.
+
+Params:
+ pred = Unary predicate template or expression string.
+  seq = Sequence to find.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template findBy(alias pred, seq...)
+{
+    alias seq[_findChunk!(pred, 1).index!seq .. $] findBy;
+}
+
+/// ditto
+template findBy(string pred, seq...)
+{
+    alias findBy!(unaryT!pred, seq) findBy;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Takes a subsequence of $(D seq) until encountering $(D E).
+
+Params:
+   E = Compile-time entity to look for.
+ seq = Target sequence.
+
+Returns:
+ Subsequence of $(D seq) before $(D E) (exclusive).  The given $(D seq) is
+ returned as is if $(D E) is not found.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template until(E, seq...)
+{
+    alias untilBy!(isSame!E, seq) until;
+}
+
+/// ditto
+template until(alias E, seq...)
+{
+    alias untilBy!(isSame!E, seq) until;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as $(D until), but stops at an item that satisfies a unary predicate.
+
+Params:
+ pred = Unary predicate template or expression string.
+  seq = Target sequence.
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template untilBy(alias pred, seq...)
+{
+    alias seq[0 .. _findChunk!(pred, 1).index!seq] untilBy;
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as evaluating $(D until!(E, seq).length) except that $(D -1) is
+returned if $(D E) is not found.
+
+Params:
+   E = .
+ seq = .
+
+Returns:
+ .  The type of the result is $(D sizediff_t).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template index(E, seq...)
+{
+    enum index = indexBy!(isSame!E, seq);
+}
+
+/// ditto
+template index(alias E, seq...)
+{
+    enum index = indexBy!(isSame!E, seq);
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as evaluating $(D untilBy!(pred, seq).length) except that $(D -1) is
+returned if no element satisfies the predicate.
+
+Params:
+ pred = .
+  seq = .
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template indexBy(alias pred, seq...)
+{
+    static if (untilBy!(pred, seq).length == seq.length)
+    {
+        enum sizediff_t indexBy = -1;
+    }
+    else
+    {
+        enum sizediff_t indexBy = untilBy!(pred, seq).length;
+    }
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Returns the number of occurrences of $(D E) in $(D seq).
+
+Params:
+   E = Compile-time entity to look for.
+ seq = Target sequence.
+
+Returns:
+ .  The type of the result is $(D size_t).
+
+Example:
+--------------------
+.
+--------------------
+ */
+template count(E, seq...)
+{
+    enum count = countBy!(isSame!E, seq);
+}
+
+/// ditto
+template count(alias E, seq...)
+{
+    enum count = countBy!(isSame!E, seq);
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Same as $(D meta.count), but returns the number of elements that satisfy
+the predicate $(D pred).
+
+Params:
+ pred = Unary predicate tempalte or expression string.
+  seq = Target sequence.
+
+Returns:
+ .
+
+Example:
+--------------------
+.
+--------------------
+ */
+template countBy(alias pred, seq...)
+{
+    static if (seq.length < 2)
+    {
+        static if (seq.length == 0 || !pred!(seq[0]))
+        {
+            enum size_t countBy = 0;
+        }
+        else
+        {
+            enum size_t countBy = 1;
+        }
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        enum countBy = countBy!(pred, seq[ 0  .. $/2]) +
+                       countBy!(pred, seq[$/2 ..  $ ]);
+    }
+}
+
+/// ditto
+template countBy(string pred, seq...)
+{
+    enum countBy = countBy!(unaryT!pred, seq);
+}
+
+
+unittest
+{
+}
+
+
+
+/**
+Determines if, respectively, _all/_any/_none of the elements in a
+sequence $(D seq) satisfies the predicate $(D pred).  Specifically:
+--------------------
+ all =  pred!(seq[0]) &&  pred!(seq[1]) && ... ;
+ any =  pred!(seq[0]) ||  pred!(seq[1]) || ... ;
+none = !pred!(seq[0]) && !pred!(seq[1]) && ... ;
+--------------------
+
+These templates evaluate conditions lazily just like usual boolean
+expressions, so unnecessary instantiations will never kick in.  For
+example, $(D meta.all) immediately returns $(D false) at first failing
+element (if any) and doesn't instantiate $(D pred) with remaining
+elements.
+
+Params:
+ pred = Unary predicate template or expression string.
+  seq = Zero or more compile-time entities to examine.
+
+Returns:
+ $(D true) if _all/_any/_none of the elements of the sequence satisfies
+ the predicate.  For the empty sequence, $(D meta.all) and $(D meta.none)
+ returns $(D true); and $(D meta.any) returns $(D false).
+
+Example:
+ These templates would be very useful in template constraints:
+--------------------
+import std.meta;
+import std.range;
+
+// This function requires all arguments should be input ranges.
+auto dropFront(Ranges...)(ref Ranges ranges)
+    if (meta.all!(isInputRange, Ranges))
+{
+    Tuple!(meta.map!(ElementType, Ranges)) result;
+
+    foreach (i, R; Ranges)
+    {
+        result[i] = ranges[i].front;
+        ranges[i].popFront();
+    }
+    return result;
+}
+--------------------
+ */
+template all(alias pred, seq...)
+{
+    static if (seq.length == 1)
+    {
+        enum all = pred!(seq[0]);
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        static if (all!(pred, seq[0 .. $/2]))
+        {
+            enum all = all!(pred, seq[$/2 .. $]);
+        }
+        else
+        {
+            enum all = false;
+        }
+    }
+}
+
+template all(alias pred) { enum all = true; }
+
+// Hook for expression strings.
+template all(string pred, seq...)
+{
+    enum all = all!(unaryT!pred, seq);
+}
+
+
+unittest
+{
+    // Laziness
+    struct Scope
+    {
+        template isZero(int n) { enum isZero = (n == 0); }
+    }
+    static assert(!all!(Scope.isZero, 1, int));
+    static assert(!all!(Scope.isZero, 0, 1, int));
+    static assert(!all!(Scope.isZero, 0, 0, 1, int));
+    static assert(!all!(Scope.isZero, 0, 0, 0, 1, int));
+}
+
+
+/**
+ditto
+ */
+template any(alias pred, seq...)
+{
+    enum any = !all!(not!pred, seq);
+}
+
+template any(alias pred) { enum any = false; }
+
+
+unittest
+{
+    // Laziness
+    struct Scope
+    {
+        template isZero(int n) { enum isZero = (n == 0); }
+    }
+    static assert(any!(Scope.isZero, 0, int));
+    static assert(any!(Scope.isZero, 1, 0, int));
+    static assert(any!(Scope.isZero, 1, 2, 0, int));
+    static assert(any!(Scope.isZero, 1, 2, 3, 0, int));
+}
+
+
+/**
+ditto
+ */
+template none(alias pred, seq...)
+{
+    enum none = !any!(pred, seq);
+}
+
+template none(alias pred) { enum none = true; }
+
+
+unittest
+{
+    // Laziness
+    struct Scope
+    {
+        template isZero(int n) { enum isZero = (n == 0); }
+    }
+    static assert(!none!(Scope.isZero, 0, int));
+    static assert(!none!(Scope.isZero, 1, 0, int));
+    static assert(!none!(Scope.isZero, 1, 2, 0, int));
+    static assert(!none!(Scope.isZero, 1, 2, 3, 0, int));
+}
+
+
+
+/* undocumented (for internal use) */
+template shortest(seqs...)
+{
+    alias most!(q{ a.length < b.length }, seqs) shortest;
+}
+
+unittest
+{
+    // Trivial case.
+    static assert(is(shortest!(pack!(1,2,3)) == pack!(1,2,3)));
+
+    // Prefer first match.
+    alias shortest!(pack!(1), pack!(2), pack!(3)) same1;
+    static assert(is(same1 == pack!(1)));
+
+    alias shortest!(pack!(1,2), pack!(1), pack!(2)) same2;
+    static assert(is(same2 == pack!(1)));
+
+    // Works with any entities that have .length.
+    alias shortest!([ 1,2,3 ], "##", pack!(int,int,int)) mixed;
+    static assert(mixed == "##");
+}
+
+
+
+/* undocumented (for internal use) */
+template minLength(seqs...)
+{
+    static if (seqs.length == 0)
+    {
+        enum size_t minLength = 0;
+    }
+    else
+    {
+        enum size_t minLength = shortest!seqs.length;
+    }
+}
+
+
+
+//----------------------------------------------------------------------------//
+// Set Operations
+//----------------------------------------------------------------------------//
+
+
+// contains
+unittest
+{
+}
+
+
+// intersect
+unittest
+{
+}
+
+
+// union
+unittest
+{
+}
+
+
+// difference
+unittest
+{
+}
+
+
+// xor
+unittest
+{
+}
+
