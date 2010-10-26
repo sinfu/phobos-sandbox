@@ -315,8 +315,12 @@ unittest
 
 
 
-/* undocumented (for internal use) */
-struct Tag(entities...);    // Being incomplete for bug 3372.
+/**
+ * TODO: doc
+ */
+struct Tag(entities...);
+
+// It's intentionally made incomplete for bug 3372.
 
 unittest
 {
