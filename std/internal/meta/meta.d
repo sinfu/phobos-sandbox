@@ -1028,8 +1028,26 @@ unittest    // doc example
 
 
 
-/*
- * Undocumented yet
+/**
+ * Lambda.
+ *
+ * Params:
+ *      decl = .
+ *  captures = .
+ *
+ * Returns:
+ *  .
+ *
+ * Examples:
+ *  .
+--------------------
+.
+--------------------
+ *
+ *  .
+--------------------
+.
+--------------------
  */
 template lambda(string decl, captures...)
 {
