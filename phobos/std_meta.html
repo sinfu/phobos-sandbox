@@ -186,6 +186,12 @@ with the <span class="d_inlinecode">meta.pack</span>.
 <p></p>
 
 </dd>
+<dt><div class="d_decl">struct <a name="Tag"></a><u>Tag</u>(entities...);
+</div></dt>
+<dd><b>TODO:</b><br>
+doc<p></p>
+
+</dd>
 <dt><div class="d_decl">template <a name="isSame"></a><u>isSame</u>(A,B)<br>template <a name="isSame"></a><u>isSame</u>(A,alias B) if (!isType!(B))<br>template <a name="isSame"></a><u>isSame</u>(alias A,B) if (!isType!(A))<br>template <a name="isSame"></a><u>isSame</u>(alias A,alias B) if (!isType!(A) &amp;&amp; !isType!(B))</div></dt>
 <dd>Determines if <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are the same compile-time entities
 or not.  <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are considered the same if their mangled
@@ -1221,6 +1227,22 @@ These templates would be very useful in template constraints:
 }
 </pre>
 <p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="setIntersection"></a><u>setIntersection</u>(alias A,alias B)</div></dt>
+<dd>Set intersection.<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="setUnion"></a><u>setUnion</u>(alias A,alias B)</div></dt>
+<dd>Set union.<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="setDifference"></a><u>setDifference</u>(alias A,alias B)</div></dt>
+<dd>Set difference.<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="setSymmetricDifference"></a><u>setSymmetricDifference</u>(alias A,alias B)</div></dt>
+<dd>Set symmetric difference.<p></p>
 
 </dd>
 </dl>
