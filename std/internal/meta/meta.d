@@ -713,10 +713,10 @@ unittest
     static assert(pseudoLess!(10, -5)); // Yes
     static assert(pseudoLess!(int, 5));
 
-    alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
-    alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
-    static assert(is(Tag!s1 == Tag!(double, int, 10, 20, "x", "y")));
-    static assert(is(Tag!s2 == Tag!(double, int, 10, 20, "x", "y")));
+//  alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
+//  alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
+//  static assert(is(Tag!s1 == Tag!(double, int, 10, 20, "x", "y")));
+//  static assert(is(Tag!s2 == Tag!(double, int, 10, 20, "x", "y")));
 }
 
 
@@ -727,6 +727,26 @@ unittest
 //----------------------------------------------------------------------------//
 // Meta Meta-Templates
 //----------------------------------------------------------------------------//
+
+
+// Generic mixin for unaryT, binaryT and variadicT.
+private mixin template _installLambdaExpr(string expr)
+{
+    // We want to return a sequence if expr does, or return an atomic
+    // entity otherwise.  This static-if determines whether to go.
+    static if (__traits(compiles,
+                        _expectEmptySeq!(mixin("("~ expr ~")[0 .. 0]"))))
+    {
+        mixin("alias Seq!("~ expr ~") _;");     // sequence
+    }
+    else
+    {
+        mixin("alias  Id!("~ expr ~") _;");     // atomic entity
+    }
+}
+
+private template _expectEmptySeq() {}
+
 
 
 /**
@@ -750,7 +770,7 @@ static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
  */
 template unaryT(string fun)
 {
-    alias unaryTGen!fun._ unaryT;
+    alias unaryTGen!fun.unaryT unaryT;
 }
 
 /// ditto
@@ -762,26 +782,43 @@ template unaryT(alias fun)
 
 private template unaryTGen(string expr)
 {
-    template _(      a) { alias eval!a._ _; }
-    template _(alias a) { alias eval!a._ _; }
+    // These elaborate frontends will give better error messages.
+    template unaryT(alias a) { alias _unaryT!a._ unaryT; }
+    template unaryT(      A) { alias _unaryT!A._ unaryT; }
 
-    template eval(args...)
+    private template _unaryT(args...)
     {
         alias Id!(args[0]) a, A;
-        mixin("alias Id!("~ expr ~") _;");
+        mixin _installLambdaExpr!expr;      // installs '_'
     }
 }
 
 
-unittest
+unittest    // atomic
 {
     alias unaryT!"a + 1" increment;
-    static assert(increment!10 == 11);
-    static assert(isSame!(unaryT!increment, increment));
-
     alias unaryT!"A*" Pointify;
+    static assert(increment!10 == 11);
     static assert(is(Pointify!int == int*));
-    static assert(isSame!(unaryT!Pointify, Pointify));
+}
+
+unittest    // sequence
+{
+    struct Tup(T...)
+    {
+        alias T Types;
+    }
+    alias unaryT!"A.Types" Expand;
+    alias Expand!(Tup!(int, double, string)) IDS;
+    static assert(is(IDS == Seq!(int, double, string)));
+
+    // 1-sequence
+    alias unaryT!"Seq!(a)" oneseq;
+    static assert(oneseq!int.length == 1);
+
+    // arrays are not sequences
+    alias unaryT!"a[0 .. 2]" slice;
+    static assert(slice!([1,2,3]) == [1,2]);
 }
 
 unittest    // doc examples
@@ -817,7 +854,7 @@ static assert(n3 == 4 + 8 + 2);
  */
 template binaryT(string fun)
 {
-    alias binaryTGen!fun._ binaryT;
+    alias binaryTGen!fun.binaryT binaryT;
 }
 
 /// ditto
@@ -829,19 +866,40 @@ template binaryT(alias fun)
 
 private template binaryTGen(string expr)
 {
-    template _(      a,       b) { alias eval!(a, b)._ _; }
-    template _(      a, alias b) { alias eval!(a, b)._ _; }
-    template _(alias a,       b) { alias eval!(a, b)._ _; }
-    template _(alias a, alias b) { alias eval!(a, b)._ _; }
+    // These elaborate frontends will give better error messages.
+    template binaryT(      A,       B) { alias _binaryT!(A, B)._ binaryT; }
+    template binaryT(      A, alias b) { alias _binaryT!(A, b)._ binaryT; }
+    template binaryT(alias a,       B) { alias _binaryT!(a, B)._ binaryT; }
+    template binaryT(alias a, alias b) { alias _binaryT!(a, b)._ binaryT; }
 
-    template eval(args...)
+ private:
+
+    template _binaryT(args...)
     {
         alias Id!(args[0]) a, A;
         alias Id!(args[1]) b, B;
-        mixin("alias Id!("~ expr ~") _;");
+        mixin _installLambdaExpr!expr;      // installs '_'
     }
 }
 
+
+unittest    // atomic
+{
+    alias binaryT!"B[A]" Assoc;
+    alias binaryT!"A[b]" ArrayA;
+    alias binaryT!"B[a]" ArrayB;
+    alias binaryT!"a / b" div;
+    static assert(is(Assoc!(string, int) == int[string]));
+    static assert(is(ArrayA!(int, 10) == int[10]));
+    static assert(is(ArrayB!(10, int) == int[10]));
+    static assert(div!(28, -7) == -4);
+}
+
+unittest    // sequence
+{
+    alias binaryT!"Seq!(a, b, 3)" ab3;
+    static assert([ ab3!(10, 20) ] == [ 10, 20, 3 ]);
+}
 
 unittest    // doc example
 {
@@ -880,7 +938,7 @@ static assert(takeFront!("pq", 8) == "pq");
  */
 template variadicT(string fun)
 {
-    alias variadicTGen!fun._ variadicT;
+    alias variadicTGen!fun.variadicT variadicT;
 }
 
 /// ditto
@@ -892,28 +950,27 @@ template variadicT(alias fun)
 
 private template variadicTGen(string expr)
 {
-    template _(args...)
+    template variadicT(args...) { alias _variadicT!args._ variadicT; }
+
+ private:
+
+    template _variadicT(args...)
     {
-        alias eval!args._ _;
+        mixin _parameters!(0, +args.length);
+        mixin _installLambdaExpr!expr;      // installs '_'
     }
 
-    template eval(args...)
-    {
-        mixin parameters!(0, +args.length);
-        mixin("alias Id!("~ expr ~") _;");
-    }
-
-    // Inject named parameter aliases a-h.
-    template parameters(size_t i, size_t n)
+    // Mix in parameter symbols: a-h.
+    mixin template _parameters(size_t i, size_t n)
     {
         static if (i < n && i < 8)
         {
-            mixin parameters!(i + 1, n);
-            mixin parameter !(i       );
+            mixin _parameter !(i       );
+            mixin _parameters!(i + 1, n);
         }
     }
 
-    template parameter(size_t i)
+    mixin template _parameter(size_t i)
     {
         mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
                                    ~ "ABCDEFGH"[i] ~";");
@@ -921,7 +978,7 @@ private template variadicTGen(string expr)
 }
 
 
-unittest
+unittest    // atomic
 {
     alias variadicT!"a + b*c" addMul;
     static assert(addMul!(2,  3,  5) == 2 +  3* 5);
@@ -951,12 +1008,109 @@ unittest
     static assert(numberof!(1,2,3,4,5,6,7,8,9) == 9);
 }
 
+unittest    // sequence
+{
+    alias variadicT!"args[0 .. $/2]" halve;
+    static assert([ halve!(1,2,3,4) ] == [ 1,2 ]);
+}
+
 unittest    // doc example
 {
     alias variadicT!"a" takeFront;
 
     static assert(takeFront!(1, 2, 3) == 1);
     static assert(takeFront!("pq", 8) == "pq");
+}
+
+
+
+/*
+ * Undocumented yet
+ */
+template lambda(string decl, captures...)
+{
+    alias lambdaGen!(decl, captures).lambda lambda;
+}
+
+private template lambdaGen(string decl, captures...)
+{
+    template lambda(args...) { alias _lambda!args._ lambda; }
+
+ private:
+
+    template _lambda(args...)
+    {
+        mixin _parameters!(0,     +args.length);
+        mixin _captures  !(0, +captures.length);
+        mixin _body;
+    }
+
+    // Because decl uses named parameter symbols (which may or may not be
+    // available depending on the number of arguments), it has to be mixed
+    // in via this template to defer compiler's checks.
+    mixin template _body()
+    {
+        mixin(decl);
+    }
+
+    // Mix in parameter symbols: a-h.
+    mixin template _parameters(size_t i, size_t n)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin _parameter !(i       );
+            mixin _parameters!(i + 1, n);
+        }
+    }
+
+    mixin template _parameter(size_t i)
+    {
+        mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
+                                   ~ "ABCDEFGH"[i] ~";");
+    }
+
+    // Mix in captured entities: p-w.
+    mixin template _captures(size_t i, size_t n)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin _capture !(i       );
+            mixin _captures!(i + 1, n);
+        }
+    }
+
+    mixin template _capture(size_t i)
+    {
+        mixin("alias Id!(captures[i]) "~ "pqrstuvw"[i] ~","
+                                       ~ "PQRSTUVW"[i] ~";");
+    }
+}
+
+
+unittest
+{
+}
+
+unittest    // capture
+{
+    struct Scope
+    {
+        struct Inner
+        {
+            enum value = 100;
+        }
+        alias meta.lambda!(
+                   q{
+                        enum _ = a*b - P.value;
+                    },
+                    Inner)  // P = Inner
+              myLambda;
+    }
+    static assert(Scope.myLambda!(3, 11) == -67);
+}
+
+unittest    // recursion
+{
 }
 
 
@@ -3317,32 +3471,373 @@ template minLength(seqs...)
 //----------------------------------------------------------------------------//
 
 
-// contains
-unittest
+version (unittest) template _Set(seq...)
 {
+    alias Tag!(sortBy!(pseudoLess, seq)) _Set;
 }
 
 
-// intersect
-unittest
+
+/**
+ * Set intersection.
+ */
+template setIntersection(alias A, alias B)
 {
+    alias setIntersectionBy!(pseudoLess, A, B) setIntersection;
 }
 
 
-// union
 unittest
 {
+    // values
+    alias Seq!(1,2,2,4,5,7,9) a;
+    alias Seq!(0,1,2,4,4,7,8) b;
+    alias Seq!(0,1,4,4,5,7,8) c;
+
+    alias setIntersection!(pack!a, pack!a) aa;
+    alias setIntersection!(pack!a, pack!b) ab;
+    alias setIntersection!(pack!b, pack!c) bc;
+    static assert(is( Tag!aa == _Set!(a) ));
+    static assert(is( Tag!ab == _Set!(1,2,4,7) ));
+    static assert(is( Tag!bc == _Set!(0,1,4,4,7,8) ));
+
+    // types
+    alias Seq!(int, int, double, string) T;
+    alias Seq!(double, string, double, int) U;
+    alias Seq!(double, void, int, double) V;
+
+    alias setIntersection!(pack!T, pack!T) TT;
+    alias setIntersection!(pack!T, pack!U) TU;
+    alias setIntersection!(pack!U, pack!V) UV;
+    static assert(is( Tag!TT == _Set!(T) ));
+    static assert(is( Tag!TU == _Set!(double, int, string) ));
+    static assert(is( Tag!UV == _Set!(double, double, int) ));
+
+    // degeneracy
+    alias Seq!() e;
+    static assert(! setIntersection!(pack!e, pack!e).length);
+    static assert(! setIntersection!(pack!e, pack!T).length);
+    static assert(! setIntersection!(pack!T, pack!a).length);
 }
 
 
-// difference
-unittest
+/* undocumented */
+template setIntersectionBy(alias comp, alias A, alias B)
 {
+    alias _SetIntersection!comp.merge!(sortBy!(comp, A.expand))
+                               ._with!(sortBy!(comp, B.expand))
+          setIntersectionBy;
 }
 
 
-// xor
+private template _SetIntersection(alias comp)
+{
+    template merge()
+    {
+        template _with(B...)
+        {
+            alias Seq!() _with;
+        }
+    }
+
+    template merge(A...)
+    {
+        template _with()
+        {
+            alias Seq!() _with;
+        }
+
+        template _with(B...)
+        {
+            static if (comp!(A[0], B[0]))
+            {
+                alias Seq!(merge!(A[1 .. $])
+                          ._with!(B        )) _with;
+            }
+            else static if (comp!(B[0], A[0]))
+            {
+                alias Seq!(merge!(A        )
+                          ._with!(B[1 .. $])) _with;
+            }
+            else
+            {
+                alias Seq!(A[0], merge!(A[1 .. $])
+                                ._with!(B[1 .. $])) _with;
+            }
+        }
+    }
+}
+
+
+
+/**
+ * Set union.
+ */
+template setUnion(alias A, alias B)
+{
+    alias setUnionBy!(pseudoLess, A, B) setUnion;
+}
+
+
 unittest
 {
+    // values
+    alias Seq!(1,2,2,4,5,7,9) a;
+    alias Seq!(0,1,2,4,4,7,8) b;
+    alias Seq!(0,1,4,4,5,7,8) c;
+
+    alias setUnion!(pack!a, pack!a) aa;
+    alias setUnion!(pack!a, pack!b) ab;
+    alias setUnion!(pack!b, pack!c) bc;
+    static assert(is( Tag!aa == _Set!(a) ));
+    static assert(is( Tag!ab == _Set!(0,1,2,2,4,4,5,7,8,9) ));
+    static assert(is( Tag!bc == _Set!(0,1,2,4,4,5,7,8) ));
+
+    // types
+    alias Seq!(int, int, double, string) T;
+    alias Seq!(double, string, double, int) U;
+    alias Seq!(double, void, int, double) V;
+
+    alias setUnion!(pack!T, pack!T) TT;
+    alias setUnion!(pack!T, pack!U) TU;
+    alias setUnion!(pack!U, pack!V) UV;
+    static assert(is( Tag!TT == _Set!(T) ));
+    static assert(is( Tag!TU == _Set!(int, int, double, double, string ) ));
+    static assert(is( Tag!UV == _Set!(double, double, void, string, int) ));
+
+    // degeneracy
+    alias Seq!() e;
+    static assert(! setUnion!(pack!e, pack!e).length);
+}
+
+
+
+/* undocumented */
+template setUnionBy(alias comp, alias A, alias B)
+{
+    alias _SetUnion!comp.merge!(sortBy!(comp, A.expand))
+                        ._with!(sortBy!(comp, B.expand)) setUnionBy;
+}
+
+
+private template _SetUnion(alias comp)
+{
+    template merge()
+    {
+        template _with(B...)
+        {
+            alias B _with;
+        }
+    }
+
+    template merge(A...)
+    {
+        template _with()
+        {
+            alias A _with;
+        }
+
+        template _with(B...)
+        {
+            static if (comp!(A[0], B[0]))
+            {
+                alias Seq!(A[0], merge!(A[1 .. $])
+                                ._with!(B        )) _with;
+            }
+            else static if (comp!(B[0], A[0]))
+            {
+                alias Seq!(B[0], merge!(A        )
+                                ._with!(B[1 .. $])) _with;
+            }
+            else
+            {
+                alias Seq!(A[0], merge!(A[1 .. $])
+                                ._with!(B[1 .. $])) _with;
+            }
+        }
+    }
+}
+
+
+
+/**
+ * Set difference.
+ */
+template setDifference(alias A, alias B)
+{
+    alias setDifferenceBy!(pseudoLess, A, B) setDifference;
+}
+
+
+unittest
+{
+    // values
+    alias Seq!(1,2,2,4,5,7,9) a;
+    alias Seq!(0,1,2,4,4,7,8) b;
+    alias Seq!(0,1,4,4,5,7,8) c;
+
+    alias setDifference!(pack!a, pack!b) ab;
+    alias setDifference!(pack!b, pack!c) bc;
+    alias setDifference!(pack!a, pack!c) ac;
+    static assert(is( Tag!ab == _Set!(2,5,9) ));
+    static assert(is( Tag!bc == _Set!(2) ));
+    static assert(is( Tag!ac == _Set!(2,2,9) ));
+
+    // types
+    alias Seq!(int, int, double, string) T;
+    alias Seq!(double, string, double, int) U;
+    alias Seq!(double, void, int, double) V;
+
+    alias setDifference!(pack!T, pack!U) TU;
+    alias setDifference!(pack!U, pack!V) UV;
+    alias setDifference!(pack!T, pack!V) TV;
+    static assert(is( Tag!TU == _Set!(int        ) ));
+    static assert(is( Tag!UV == _Set!(string     ) ));
+    static assert(is( Tag!TV == _Set!(int, string) ));
+
+    // degeneracy
+    alias Seq!() e;
+    static assert(! setDifference!(pack!a, pack!a).length);
+    static assert(! setDifference!(pack!e, pack!a).length);
+    static assert(! setDifference!(pack!e, pack!e).length);
+}
+
+
+/* undocumented */
+template setDifferenceBy(alias comp, alias A, alias B)
+{
+    alias _SetDifference!comp.merge!(sortBy!(comp, A.expand))
+                             ._with!(sortBy!(comp, B.expand))
+          setDifferenceBy;
+}
+
+
+private template _SetDifference(alias comp)
+{
+    template merge()
+    {
+        template _with(B...)
+        {
+            alias Seq!() _with;
+        }
+    }
+
+    template merge(A...)
+    {
+        template _with()
+        {
+            alias A _with;
+        }
+
+        template _with(B...)
+        {
+            static if (comp!(A[0], B[0]))
+            {
+                alias Seq!(A[0], merge!(A[1 .. $])
+                                ._with!(B        )) _with;
+            }
+            else static if (comp!(B[0], A[0]))
+            {
+                alias Seq!(merge!(A        )
+                          ._with!(B[1 .. $])) _with;
+            }
+            else
+            {
+                alias Seq!(merge!(A[1 .. $])
+                          ._with!(B[1 .. $])) _with;
+            }
+        }
+    }
+}
+
+
+
+/**
+ * Set symmetric difference.
+ */
+template setSymmetricDifference(alias A, alias B)
+{
+    alias setSymmetricDifferenceBy!(pseudoLess, A, B) setSymmetricDifference;
+}
+
+
+unittest
+{
+    // values
+    alias Seq!(1,2,2,4,5,7,9) a;
+    alias Seq!(0,1,2,4,4,7,8) b;
+    alias Seq!(0,1,4,4,5,7,8) c;
+
+    alias setSymmetricDifference!(pack!a, pack!b) ab;
+    alias setSymmetricDifference!(pack!b, pack!c) bc;
+    alias setSymmetricDifference!(pack!a, pack!c) ac;
+    static assert(is( Tag!ab == _Set!(0,2,4,5,8,9) ));
+    static assert(is( Tag!bc == _Set!(2,5) ));
+    static assert(is( Tag!ac == _Set!(0,2,2,4,8,9) ));
+
+    // types
+    alias Seq!(int, int, double, string) T;
+    alias Seq!(double, string, double, int) U;
+    alias Seq!(double, void, int, double) V;
+
+    alias setSymmetricDifference!(pack!T, pack!U) TU;
+    alias setSymmetricDifference!(pack!U, pack!V) UV;
+    alias setSymmetricDifference!(pack!T, pack!V) TV;
+    static assert(is( Tag!TU == _Set!(int, double) ));
+    static assert(is( Tag!UV == _Set!(string, void) ));
+    static assert(is( Tag!TV == _Set!(int, double, string, void) ));
+
+    // degeneracy
+    alias Seq!() e;
+    static assert(! setSymmetricDifference!(pack!a, pack!a).length);
+    static assert(! setSymmetricDifference!(pack!e, pack!e).length);
+}
+
+
+/* undocumented */
+template setSymmetricDifferenceBy(alias comp, alias A, alias B)
+{
+    alias _SetSymmetricDifference!comp
+                .merge!(sortBy!(comp, A.expand))
+                ._with!(sortBy!(comp, B.expand)) setSymmetricDifferenceBy;
+}
+
+
+private template _SetSymmetricDifference(alias comp)
+{
+    template merge()
+    {
+        template _with(B...)
+        {
+            alias B _with;
+        }
+    }
+
+    template merge(A...)
+    {
+        template _with()
+        {
+            alias A _with;
+        }
+
+        template _with(B...)
+        {
+            static if (comp!(A[0], B[0]))
+            {
+                alias Seq!(A[0], merge!(A[1 .. $])
+                                ._with!(B        )) _with;
+            }
+            else static if (comp!(B[0], A[0]))
+            {
+                alias Seq!(B[0], merge!(A        )
+                                ._with!(B[1 .. $])) _with;
+            }
+            else
+            {
+                alias Seq!(merge!(A[1 .. $])
+                          ._with!(B[1 .. $])) _with;
+            }
+        }
+    }
 }
 
