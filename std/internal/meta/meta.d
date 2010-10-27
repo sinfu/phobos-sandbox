@@ -1501,7 +1501,7 @@ template apply(string expr, args...)
 
 
 //----------------------------------------------------------------------------//
-// Sequence Generation
+// Sequence Construction
 //----------------------------------------------------------------------------//
 
 
@@ -1545,7 +1545,7 @@ private template isCompileTimeArray(alias arr)
     {
         enum isCompileTimeArray =
                 // Length and elements must be known.
-                __traits(compiles, int[ arr[0] == arr[$ - 1] ]);
+                __traits(compiles, int[ arr[0 .. 0] == arr[$ .. $] ]);
     }
     else
     {
@@ -1746,6 +1746,157 @@ unittest
     static assert([0, repeat!(1, 8,7), 0] == [0, 8,7,             0]);
     static assert([0, repeat!(3, 8,7), 0] == [0, 8,7,8,7,8,7,     0]);
     static assert([0, repeat!(4, 8,7), 0] == [0, 8,7,8,7,8,7,8,7, 0]);
+}
+
+
+
+/* undocumented (for internal use) */
+template insertAt(size_t i, E, seq...)
+{
+    alias Seq!(seq[0 .. i], E, seq[i .. $]) insertAt;
+}
+
+// ditto
+template insertAt(size_t i, alias E, seq...)
+{
+    alias Seq!(seq[0 .. i], E, seq[i .. $]) insertAt;
+}
+
+
+unittest
+{
+    static assert([ insertAt!(0, 0, 1,2,3,4) ] == [ 0,1,2,3,4 ]);
+    static assert([ insertAt!(2, 0, 1,2,3,4) ] == [ 1,2,0,3,4 ]);
+    static assert([ insertAt!(4, 0, 1,2,3,4) ] == [ 1,2,3,4,0 ]);
+
+    alias insertAt!(0, int, 1,2,3,4) T0;
+    alias insertAt!(2, int, 1,2,3,4) T2;
+    alias insertAt!(4, int, 1,2,3,4) T4;
+    static assert(is( Tag!T0 == Tag!(int,1,2,3,4) ));
+    static assert(is( Tag!T2 == Tag!(1,2,int,3,4) ));
+    static assert(is( Tag!T4 == Tag!(1,2,3,4,int) ));
+
+    static assert(is( Tag!(insertAt!(0,   0)) == Tag!0   ));
+    static assert(is( Tag!(insertAt!(0, int)) == Tag!int ));
+}
+
+
+
+/* undocumented (for internal use) */
+template replaceAt(size_t i, E, seq...)
+{
+    alias Seq!(seq[0 .. i], E, seq[i + 1 .. $]) replaceAt;
+}
+
+// ditto
+template replaceAt(size_t i, alias E, seq...)
+{
+    alias Seq!(seq[0 .. i], E, seq[i + 1 .. $]) replaceAt;
+}
+
+
+unittest
+{
+    static assert([ replaceAt!(0, 0, 1,2,3,4,5) ] == [ 0,2,3,4,5 ]);
+    static assert([ replaceAt!(2, 0, 1,2,3,4,5) ] == [ 1,2,0,4,5 ]);
+    static assert([ replaceAt!(4, 0, 1,2,3,4,5) ] == [ 1,2,3,4,0 ]);
+
+    alias replaceAt!(0, int, 1,2,3,4,5) T0;
+    alias replaceAt!(2, int, 1,2,3,4,5) T2;
+    alias replaceAt!(4, int, 1,2,3,4,5) T4;
+    static assert(is(Tag!T0 == Tag!(int,2,3,4,5)));
+    static assert(is(Tag!T2 == Tag!(1,2,int,4,5)));
+    static assert(is(Tag!T4 == Tag!(1,2,3,4,int)));
+}
+
+
+
+/**
+Swaps $(D i)-th and $(D j)-th elements of $(D seq).
+
+Params:
+   i = Valid index for $(D seq).
+   j = ditto.
+ seq = Target sequence.
+
+Returns:
+ $(D seq) in which $(D seq[i]) and $(D seq[j]) are replaced with each other.
+
+Example:
+--------------------
+alias meta.Seq!(byte, short, int, long) Types;
+
+// Swap short and int.
+alias meta.swapAt!(1, 2, Types) Swapped;
+static assert(is(Swapped == meta.Seq!(byte, int, short, long)));
+--------------------
+ */
+template swapAt(size_t i, size_t j, seq...)
+{
+    alias replaceAt!(j, seq[i], replaceAt!(i, seq[j], seq)) swapAt;
+}
+
+
+unittest
+{
+    static assert([ swapAt!(1, 3, 0,1,2,3,4) ] == [ 0,3,2,1,4 ]);
+    static assert([ swapAt!(0, 3, 0,1,2,3,4) ] == [ 3,1,2,0,4 ]);
+    static assert([ swapAt!(4, 1, 0,1,2,3,4) ] == [ 0,4,2,3,1 ]);
+    static assert([ swapAt!(4, 0, 0,1,2,3,4) ] == [ 4,1,2,3,0 ]);
+    static assert([ swapAt!(1, 1, 0,1,2,3,4) ] == [ 0,1,2,3,4 ]);
+}
+
+
+
+/* undocumented (for internal use) */
+template extractAt(size_t i, seq...)
+{
+    alias Id!(seq[i]) extractAt;
+}
+
+
+/**
+Extracts elements at the specified positions out of $(D seq).
+
+Params:
+ indices = Compile-time array of _indices designating elements to _extract.
+           Each index must be less than $(D seq.length) and implicitly
+           convertible to $(D size_t).  Duplicate _indices are allowed.
+     seq = Source sequence.
+
+Returns:
+ Sequence of elements extracted from $(D seq).  The order of the elements
+ is the same as that of corresponding _indices in $(D indices).  The empty
+ sequence is returned if $(D indices) is empty.
+
+Example:
+--------------------
+alias meta.Seq!(double, "value", 5.0) seq;
+alias meta.extract!([ 0, 2 ], seq) extracted;
+
+static assert(extracted.length == 2);
+static assert(is(extracted[0] == double));
+static assert(   extracted[1] == 5.0    );
+--------------------
+ */
+template extract(alias indices, seq...)
+{
+    alias map!(bindBack!(extractAt, seq), expand!indices) extract;
+}
+
+
+unittest
+{
+    alias Seq!(0,10,20,30,40) src;
+
+    static assert([ extract!([], src) ] == [ ]);
+    static assert([ extract!([2], src) ] == [ 20 ]);
+    static assert([ extract!([1,2,3], src) ] == [ 10,20,30 ]);
+    static assert([ extract!([0,1,2,3,4], src) ] == [ 0,10,20,30,40 ]);
+    static assert([ extract!([0,1,2,3,4], src) ] == [ 0,10,20,30,40 ]);
+
+    static assert([ extract!([1,1,1], src) ] == [ 10,10,10 ]);
+    static assert([ extract!([3,3,3,2,2,2], src) ] == [ 30,30,30,20,20,20 ]);
 }
 
 
