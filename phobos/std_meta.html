@@ -260,14 +260,27 @@ partially applied template.
 <b>Returns:</b><br>Unary template that evaluates <span class="d_inlinecode">fun</span>.
 
 <p></p>
-<b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"const A"</span> Constify;
+<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"const A"</span> Constify;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Constify!<span class="d_keyword">int</span> == <span class="d_keyword">const</span> <span class="d_keyword">int</span>));
 
 <span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"a.length"</span> lengthof;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(lengthof!([ 1,2,3,4,5 ]) == 5);
 </pre>
+
+ In the next example, the generated template returns a sequence.
+<pre class="d_code"><span class="d_keyword">import</span> std.typecons;
+
+<span class="d_comment">// Extracts the Types property of a Tuple instance.
+</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"A.Types"</span> expand;
+
+<span class="d_keyword">alias</span> expand!(Tuple!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string)) Types;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[0] == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[1] == <span class="d_keyword">double</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[2] == string));
+</pre>
+
 <p></p>
+<b>See Also:</b><br><span class="d_inlinecode">meta.lambda</span><p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="binaryT"></a><u>binaryT</u>(string fun)<br>template <a name="binaryT"></a><u>binaryT</u>(alias fun)</div></dt>
@@ -282,13 +295,18 @@ partially applied template.
 
 <p></p>
 <b>Example:</b><br>
+This example uses the first parameter <span class="d_inlinecode">a</span> as a value and the second one
+ <span class="d_inlinecode">B</span> as a type, and returns a value.
 <pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">binaryT</span>!<span class="d_string">"a + B.sizeof"</span> accumSize;
+
 <span class="d_keyword">enum</span> n1 = accumSize!( 0,    <span class="d_keyword">int</span>);
 <span class="d_keyword">enum</span> n2 = accumSize!(n1, <span class="d_keyword">double</span>);
 <span class="d_keyword">enum</span> n3 = accumSize!(n2,  <span class="d_keyword">short</span>);
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(n3 == 4 + 8 + 2);
 </pre>
+
 <p></p>
+<b>See Also:</b><br><span class="d_inlinecode">meta.lambda</span><p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="variadicT"></a><u>variadicT</u>(string fun)<br>template <a name="variadicT"></a><u>variadicT</u>(alias fun)</div></dt>
@@ -314,27 +332,86 @@ on the number of arguments.
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(takeFront!(1, 2, 3) == 1);
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(takeFront!(<span class="d_string">"pq"</span>, 8) == <span class="d_string">"pq"</span>);
 </pre>
+
 <p></p>
+<b>See Also:</b><br><span class="d_inlinecode">meta.lambda</span><p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="lambda"></a><u>lambda</u>(string decl,captures...)</div></dt>
-<dd>Lambda.
+<dd>Transforms a string representing a template body into a variadic template.
+<p></p>
+<span class="d_inlinecode">meta.<a name="lambda"></a><u>lambda</u></span> is much like <span class="d_inlinecode">meta.variadicT</span> as it's variadic and
+parameters can be accessed via <span class="d_inlinecode">args</span> and <span class="d_inlinecode">a</span>-<span class="d_inlinecode">h</span>.  In addition,
+<span class="d_inlinecode">meta.<a name="lambda"></a><u>lambda</u></span> also supports recursions and local entity captures.
+
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>decl</td>
-<td valign=top>.</td></tr>
+<td valign=top>String representing a valid template body.  The body must
+            declare a symbol <span class="d_inlinecode">_</span> that represents the result of the
+            template.  The result may be overloaded.
+<p></p>
+
+            The body may use named parameters <span class="d_inlinecode">a</span> to <span class="d_inlinecode">h</span>, <span class="d_inlinecode">A</span> to
+            <span class="d_inlinecode">H</span> and <span class="d_inlinecode">args</span>.  Also, named captures <span class="d_inlinecode">p</span> to <span class="d_inlinecode">w</span>,
+            <span class="d_inlinecode">P</span> to <span class="d_inlinecode">W</span> and <span class="d_inlinecode">captures</span> are available.
+<p></p>
+
+            The body may use an identifier <span class="d_inlinecode"><a name="lambda"></a><u>lambda</u></span> that refers to the
+            generated template itself.</td></tr>
 <tr><td valign=top>captures</td>
-<td valign=top>.</td></tr>
+<td valign=top>Local compile-time entities (types, values, templates etc.) to
+            make available in the generated template.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Variadic template whose body is <span class="d_inlinecode">decl</span> and evaluates to <span class="d_inlinecode">_</span> declared
+ in that body.
 
 <p></p>
-<b>Examples:</b><br>.
-<pre class="d_code">.
+<b>Recursion:</b><br>
+The generated template itself is accessible from the string using an
+ identifier <span class="d_inlinecode"><a name="lambda"></a><u>lambda</u></span>, and you can define recursive templates:
+<pre class="d_code"><span class="d_comment">// Remove pointer 'stars' from every type in a sequence.  The generated
+</span><span class="d_comment">// template is passed to meta.map as a transoforming template.
+</span><span class="d_keyword">alias</span> meta.map!(meta.<span class="d_psymbol">lambda</span>!(
+                   <span class="d_string">q{
+                        static if (is(A T : T*))
+                        {
+                            alias lambda!T _;   // recursion
+                        }
+                        else
+                        {
+                            alias        A _;
+                        }
+                    }</span>),
+                <span class="d_keyword">int</span>*, <span class="d_keyword">void</span>**, <span class="d_keyword">short</span>, <span class="d_keyword">double</span>***) NoPointers;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(NoPointers[0] == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(NoPointers[1] == <span class="d_keyword">void</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(NoPointers[2] == <span class="d_keyword">short</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(NoPointers[3] == <span class="d_keyword">double</span>));
 </pre>
 
-  .
-<pre class="d_code">.
-</pre>
+<p></p>
+<b>Captures:</b><br>
+The template generated by <span class="d_inlinecode">meta.<a name="lambda"></a><u>lambda</u></span> can use local entities
+ explicitly passed via the <span class="d_inlinecode">captures</span> parameter.  Like template
+ parameters, captured entities get named <span class="d_inlinecode">p</span>-<span class="d_inlinecode">w</span> and <span class="d_inlinecode">P</span>-<span class="d_inlinecode">W</span>.
+<pre class="d_code"><span class="d_keyword">struct</span> Example(T, UU...)
+{
+    <span class="d_comment">// Check if UU contains a type that implicitly convertible to T,
+</span>    <span class="d_comment">// and issues an error if so.
+</span>    <span class="d_keyword">static</span> <span class="d_keyword">if</span> (meta.any!(meta.<span class="d_psymbol">lambda</span>!(
+                            <span class="d_string">q{
+                                 enum _ = is(A : P);
+                             }</span>,
+                             T),    <span class="d_comment">// T is captured as 'P'
+</span>                         UU))
+    {
+        <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(0, <span class="d_string">"At least one type in "</span>~ UU.stringof ~<span class="d_string">" is "</span>
+                        ~<span class="d_string">"implicitly convertible to "</span>~ T.stringof);
+    }
+}
+Example!(<span class="d_keyword">int</span>, string, <span class="d_keyword">double</span>) Okay;
+Example!(<span class="d_keyword">int</span>, string,   <span class="d_keyword">bool</span>) Error;    <span class="d_comment">// Convertible: bool -&gt; int
+</span></pre>
 <p></p>
 
 </dd>
@@ -486,18 +563,51 @@ the remaining predicates.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="expand"></a><u>expand</u>(alias arr) if (isCompileTimeArray!(arr))</div></dt>
+<dt><div class="d_decl">template <a name="expand"></a><u>expand</u>(alias arr)</div></dt>
 <dd>Expands a compile-time array to a sequence of the elements.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>arr</td>
 <td valign=top>Compile-time expression of an array.  The array can be dynamic or
-       static.  The length and the elements must be known at compile-time.</td></tr>
+       static, but its length and elements must be known at compile-time.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence of the elements of <span class="d_inlinecode">arr</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"> .
+Using <span class="d_inlinecode">meta.<a name="expand"></a><u>expand</u></span> to apply a meta algorithm <span class="d_inlinecode">meta.map</span> on
+ elements of a compile-time array.
+<pre class="d_code"><span class="d_comment">// Array of function names.
+</span><span class="d_keyword">enum</span> functions = [ <span class="d_string">"fun"</span>, <span class="d_string">"gun"</span>, <span class="d_string">"hun"</span> ];
+
+<span class="d_comment">// Use meta.map to transform the function names into signatures with
+</span><span class="d_comment">// help of meta.expand.
+</span><span class="d_keyword">alias</span> meta.map!(meta.lambda!(
+                   <span class="d_string">q{
+                        // Make a signature of a variadic function of
+                        // the given name 'a'.
+                        enum _ = "auto "~ a ~"(Args...)(Args args)";
+                    }</span>),
+                meta.<span class="d_psymbol">expand</span>!functions) signatures;
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="expand"></a><u>expand</u>(Arr : Arr[n],size_t n)</div></dt>
+<dd>Expands a static array type into a sequence of its element types.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>Arr</td>
+<td valign=top>Type of a static array.</td></tr>
+<tr><td valign=top>n</td>
+<td valign=top>The length of the static array; it's automatically deduced by the
+       language when instantiating this template.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>The element type of <span class="d_inlinecode">Arr</span> repeated <span class="d_inlinecode">n</span> times.  The empty sequence is
+ returned if <span class="d_inlinecode">n == 0</span>.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">expand</span>!(<span class="d_keyword">int</span>[4]) int4;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Tag!int4 == Tag!(<span class="d_keyword">int</span>, <span class="d_keyword">int</span>, <span class="d_keyword">int</span>, <span class="d_keyword">int</span>)));
 </pre>
 <p></p>
 
@@ -581,6 +691,56 @@ Filling a continuous region in a table with specific values.
     'a': meta.<span class="d_psymbol">repeat</span>!(26, CharType.alpha),
 ];
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(charTypeTab['M'] == CharType.alpha);
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="swapAt"></a><u>swapAt</u>(size_t i,size_t j,seq...)</div></dt>
+<dd>Swaps <span class="d_inlinecode">i</span>-th and <span class="d_inlinecode">j</span>-th elements of <span class="d_inlinecode">seq</span>.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>i</td>
+<td valign=top>Valid index for <span class="d_inlinecode">seq</span>.</td></tr>
+<tr><td valign=top>j</td>
+<td valign=top>ditto.</td></tr>
+<tr><td valign=top>seq</td>
+<td valign=top>Target sequence.</td></tr>
+</table><p></p>
+<b>Returns:</b><br><span class="d_inlinecode">seq</span> in which <span class="d_inlinecode">seq[i]</span> and <span class="d_inlinecode">seq[j]</span> are replaced with each other.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">byte</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">long</span>) Types;
+
+<span class="d_comment">// Swap short and int.
+</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">swapAt</span>!(1, 2, Types) Swapped;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Swapped == meta.Seq!(<span class="d_keyword">byte</span>, <span class="d_keyword">int</span>, <span class="d_keyword">short</span>, <span class="d_keyword">long</span>)));
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="extract"></a><u>extract</u>(alias indices,seq...)</div></dt>
+<dd>Extracts elements at the specified positions out of <span class="d_inlinecode">seq</span>.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>indices</td>
+<td valign=top>Compile-time array of indices designating elements to extract.
+           Each index must be less than <span class="d_inlinecode">seq.length</span> and implicitly
+           convertible to <span class="d_inlinecode">size_t</span>.  Duplicate indices are allowed.</td></tr>
+<tr><td valign=top>seq</td>
+<td valign=top>Source sequence.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Sequence of elements extracted from <span class="d_inlinecode">seq</span>.  The order of the elements
+ is the same as that of corresponding indices in <span class="d_inlinecode">indices</span>.  The length
+ of the result is the same as that of <span class="d_inlinecode">indices</span>, and the empty sequence
+ is returned if <span class="d_inlinecode">indices</span> is empty.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">double</span>, <span class="d_string">"value"</span>, 5.0) seq;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">extract</span>!([ 0, 2 ], seq) extracted;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(extracted.length == 2);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(extracted[0] == <span class="d_keyword">double</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(   extracted[1] == 5.0    );
 </pre>
 <p></p>
 
