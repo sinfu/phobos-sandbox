@@ -1035,6 +1035,25 @@ $(D meta.lambda) is much like $(D meta.variadicT) as it's variadic and
 parameters can be accessed via $(D args) and $(D a)-$(D h).  In addition,
 $(D meta.lambda) also supports recursions and local entity _captures.
 
+Params:
+     decl = String representing a valid template body.  The body must
+            declare a symbol $(D __) that represents the result of the
+            template.  The result may be overloaded.
+
+            The body may use named parameters $(D a) to $(D h), $(D A) to
+            $(D H) and $(D args).  Also, named _captures $(D p) to $(D w),
+            $(D P) to $(D W) and $(D captures) are available.
+
+            The body may use an identifier $(D lambda) that refers to the
+            generated template itself.
+
+ captures = Local compile-time entities (types, values, templates etc.) to
+            make available in the generated template.
+
+Returns:
+ Variadic template whose body is $(D decl) and evaluates to $(D __) declared
+ in that body.
+
 Recursion:
 
  The generated template itself is accessible from the string using an
@@ -1084,25 +1103,6 @@ struct Example(T, UU...)
 Example!(int, string, double) Okay;
 Example!(int, string,   bool) Error;    // Convertible: bool -> int
 --------------------
-
-Params:
-     decl = String representing a valid template body.  The body must
-            declare a symbol $(D __) that represents the result of the
-            template.  The result may be overloaded.
-
-            The body may use named parameters $(D a) to $(D h), $(D A) to
-            $(D H) and $(D args).  Also, named _captures $(D p) to $(D w),
-            $(D P) to $(D W) and $(D captures) are available.
-
-            The body may use an identifier $(D lambda) that refers to the
-            generated template itself.
-
- captures = Local compile-time entities to make available in the generated
-            template.
-
-Returns:
- Variadic template whose body is $(D decl) and evaluates to $(D __) declared
- in that body.
  */
 template lambda(string decl, captures...)
 {
