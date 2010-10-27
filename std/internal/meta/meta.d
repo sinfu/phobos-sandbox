@@ -763,7 +763,7 @@ Params:
 Returns:
  Unary template that evaluates $(D fun).
 
-Example:
+Examples:
 --------------------
 alias meta.unaryT!"const A" Constify;
 static assert(is(Constify!int == const int));
@@ -771,6 +771,22 @@ static assert(is(Constify!int == const int));
 alias meta.unaryT!"a.length" lengthof;
 static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
 --------------------
+
+ In the next example, the generated template returns a sequence.
+--------------------
+import std.typecons;
+
+// Extracts the Types property of a Tuple instance.
+alias meta.unaryT!"A.Types" expand;
+
+alias expand!(Tuple!(int, double, string)) Types;
+static assert(is(Types[0] == int));
+static assert(is(Types[1] == double));
+static assert(is(Types[2] == string));
+--------------------
+
+See_Also:
+ $(D meta.lambda)
  */
 template unaryT(string fun)
 {
@@ -848,13 +864,19 @@ Returns:
  Binary template that evaluates $(D fun).
 
 Example:
+ This example uses the first parameter $(D a) as a value and the second one
+ $(D B) as a type, and returns a value.
 --------------------
 alias meta.binaryT!"a + B.sizeof" accumSize;
+
 enum n1 = accumSize!( 0,    int);
 enum n2 = accumSize!(n1, double);
 enum n3 = accumSize!(n2,  short);
 static assert(n3 == 4 + 8 + 2);
 --------------------
+
+See_Also:
+ $(D meta.lambda)
  */
 template binaryT(string fun)
 {
@@ -939,6 +961,9 @@ alias meta.variadicT!"a" takeFront;
 static assert(takeFront!(1, 2, 3) == 1);
 static assert(takeFront!("pq", 8) == "pq");
 --------------------
+
+See_Also:
+ $(D meta.lambda)
  */
 template variadicT(string fun)
 {
