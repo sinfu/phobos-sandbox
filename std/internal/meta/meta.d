@@ -4091,8 +4091,6 @@ template any(alias pred, seq...)
     enum any = !all!(not!pred, seq);
 }
 
-template any(alias pred) { enum any = false; }
-
 
 unittest
 {
@@ -4116,8 +4114,6 @@ template none(alias pred, seq...)
     enum none = !any!(pred, seq);
 }
 
-template none(alias pred) { enum none = true; }
-
 
 unittest
 {
@@ -4130,6 +4126,43 @@ unittest
     static assert(!none!(Scope.isZero, 1, 0, int));
     static assert(!none!(Scope.isZero, 1, 2, 0, int));
     static assert(!none!(Scope.isZero, 1, 2, 3, 0, int));
+}
+
+
+
+/**
+Determines if only one of the elements of $(D seq) satisfies the predicate
+$(D pred).  The predicate is tested for all the elements.
+
+Params:
+ pred = Unary predicate template or expression string.
+  seq = Zero or more compile-time entities to examine.
+
+Returns:
+ $(D true) if $(D seq) is not empty and only one of the elements satisfies
+ the predicate.  Otherwise, $(D false) is returned.
+
+Example:
+--------------------
+.
+--------------------
+ */
+template only(alias pred, seq...)
+{
+    enum only = countBy!(pred, seq) == 1;
+}
+
+
+unittest
+{
+    static assert(only!(q{ a == 0 }, 0,1,2,3,4,5,6));
+    static assert(only!(q{ a == 0 }, 1,2,3,0,4,5,6));
+    static assert(only!(q{ a == 0 }, 1,2,3,4,5,6,0));
+
+    static assert(!only!(q{ a == 0 }, 0,0,1,2,3,4));
+    static assert(!only!(q{ a == 0 }, 1,2,0,0,3,4));
+    static assert(!only!(q{ a == 0 }, 0,1,2,3,4,0));
+    static assert(!only!(q{ a == 0 }));
 }
 
 
