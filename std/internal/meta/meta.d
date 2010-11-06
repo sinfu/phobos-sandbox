@@ -1406,6 +1406,80 @@ unittest    // doc example
 
 
 /**
+Binds $(D args) to all the parameters of $(D templat).  Generated template
+will instantiate $(D templat) with just the bound arguments.
+
+Params:
+ templat = Template or string to instantiate.
+    args = Complete arguments for $(D templat).
+
+Returns:
+ Variadic template that constantly returns $(D templat!args) regardless of
+ its arguments.
+
+Example:
+----------
+alias meta.fixed!(meta.Id, int) intFixed;
+static assert(is(intFixed!() == int));
+static assert(is(intFixed!(void) == int));
+static assert(is(intFixed!(1,2,3) == int));
+----------
+
+ Using fixed template for a fallback case of $(D meta.guard):
+----------
+struct Error;
+
+alias meta.guard!(q{ A[] }, meta.fix!(meta.Id, Error)) Array;
+static assert(is(Array!int == int[]));
+static assert(is(Array!100 == Error));
+----------
+ */
+template fix(alias templat, args...)
+{
+    template fix(_...)
+    {
+        alias templat!args fix;
+    }
+}
+
+template fix(string templat, args...)
+{
+    alias fix!(variadicT!templat, args) fix;
+}
+
+
+unittest
+{
+    alias meta.fix!(meta.Seq) empty;
+    static assert(empty!().length == 0);
+    static assert(empty!(int).length == 0);
+    static assert(empty!(int, double).length == 0);
+
+    alias meta.fix!(q{ a + b }, 10, 20) sum30;
+    static assert(sum30!() == 30);
+    static assert(sum30!(40) == 30);
+}
+
+unittest    // doc example (1)
+{
+    alias meta.fix!(meta.Id, int) intFixed;
+    static assert(is(intFixed!() == int));
+    static assert(is(intFixed!(void) == int));
+    static assert(is(intFixed!(1,2,3) == int));
+}
+
+unittest    // doc example (2)
+{
+    struct Error;
+
+    alias meta.guard!(q{ A[] }, meta.fix!(meta.Id, Error)) Array;
+    static assert(is(Array!int == int[]));
+    static assert(is(Array!100 == Error));
+}
+
+
+
+/**
 Creates a predicate template that inverts the result of the given one.
 
 Params:
@@ -1757,47 +1831,34 @@ unittest    // doc example
 
 
 /**
-TBD
+Generates a template that tries instantiating specified templates in turn
+and returns the result of the first compilable template.
 
-The fixed template would be useful for a fallback case of $(D meta.guard).
-
-Params:
- templat = .
-    args = .
-
-Returns:
- Variadic template that constantly returns $(D templat!args) regardless of
- its arguments.
-
-Example:
+For example, $(D meta.guard!(t1, t2)) generates a template that behaves
+as follows:
 ----------
-alias meta.fix!(meta.Id, int) intFixed;
-static assert(is(intFixed!() == int));
-static assert(is(intFixed!void == int));
-static assert(is(intFixed!(1,2,3) == int));
-----------
- */
-template fix(alias templat, args...)
+template trial(args...)
 {
-    template fix(_...)
+    static if (__traits(compiles, t1!(args)))
     {
-        alias apply!(templat, args) fix;
+        alias t1!(args) trial;
+    }
+    else
+    {
+        alias t2!(args) trial;
     }
 }
+----------
 
+Params:
+ templates = Templates to try instantiation.  Each template can be a real
+             template or a string that can be transformed to a template
+             using $(D meta.variadicT).
 
-unittest    // doc example
-{
-    alias meta.fix!(meta.Id, int) intFixed;
-    static assert(is(intFixed!() == int));
-    static assert(is(intFixed!void == int));
-    static assert(is(intFixed!(1,2,3) == int));
-}
-
-
-
-/**
-TBD
+Returns:
+ Variadic template that instantiates the first compilable template among
+ $(D templates).  The last template is not guarded; if all the templates
+ failed, the generated template will fail due to the last one.
 
 Example:
 ----------
@@ -1807,21 +1868,70 @@ static assert(!hasNegativeMin!uint);    // uint.min is non-negative
 static assert(!hasNegativeMin!void);    // void.min is not defined
 ----------
  */
+template guard(templates...) if (templates.length > 0)
+{
+    static if (templates.length == 1)
+    {
+        alias variadicT!(templates[0]) guard;
+    }
+    else
+    {
+        alias reduce!(.guard, templates) guard;
+    }
+}
+
 template guard(alias f, alias g)
 {
     template guard(args...)
     {
-        static if (__traits(compiles, apply!(f, args)))
+        static if (__traits(compiles, f!args))
         {
-            alias apply!(f, args) guard;
+            alias f!args guard;
         }
         else
         {
-            alias apply!(g, args) guard;
+            alias g!args guard;
         }
     }
 }
 
+template guard(string f, alias  g) { alias guard!(variadicT!f,           g) guard; }
+template guard(alias  f, string g) { alias guard!(          f, variadicT!g) guard; }
+template guard(string f, string g) { alias guard!(variadicT!f, variadicT!g) guard; }
+
+
+unittest
+{
+    struct Scope
+    {
+        template Const(T) { alias const(T) Const; }
+    }
+    alias Scope.Const Const;
+
+    // No actual guard
+    alias guard!Const JustConst;
+    static assert(is(JustConst!int == const int));
+    static assert(!__traits(compiles, JustConst!10));
+
+    alias guard!q{ a + 1 } increment;
+    static assert(increment!13 == 14);
+    static assert(!__traits(compiles, increment!double));
+
+    // Double trial
+    alias guard!(Const, Id) MaybeConst;
+    static assert(is(MaybeConst!int == const int));
+    static assert(MaybeConst!"string" == "string");
+
+    alias guard!(q{ +a }, q{ A.init }) valueof;
+    static assert(valueof!1.0 == 1.0);
+    static assert(valueof!int == 0);
+
+    // Triple trial
+    alias guard!(q{ [a] }, q{ [A.min]  }, q{ [A.init] }) makeArray;
+    static assert(makeArray!1.0 == [ 1.0 ]);
+    static assert(makeArray!int == [ int.min ]);
+    static assert(makeArray!string == [ "" ]);
+}
 
 unittest     // doc example
 {
