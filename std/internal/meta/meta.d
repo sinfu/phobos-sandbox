@@ -733,13 +733,11 @@ unittest
 //----------------------------------------------------------------------------//
 
 
-// Generic mixin for unaryT, binaryT and variadicT.
+// Installs a code evaluating expr and aliasing it with '_'.  The result
+// can be an atomic entity or a sequence as expr returns.
 private mixin template _installLambdaExpr(string expr)
 {
-    // We want to return a sequence if expr does, or return an atomic
-    // entity otherwise.  This static-if determines whether to go.
-    static if (__traits(compiles,
-                        _expectEmptySeq!(mixin("("~ expr ~")[0 .. 0]"))))
+    static if (__traits(compiles, _expectEmptySeq!(mixin("("~ expr ~")[0 .. 0]"))))
     {
         mixin("alias Seq!("~ expr ~") _;");     // sequence
     }
@@ -754,14 +752,15 @@ private template _expectEmptySeq() {}
 
 
 /**
-Transforms a string representing an expression into a unary template.
+Transforms a string representing a compile-time entity into a unary template
+that returns the represented entity.
 
 Params:
- fun = Expression string or template declaration.  The string may use
-       named parameter aliases $(D a) and $(D A).
+ expr = String representing a compile-time entity using a template parameter
+        $(D a) or $(D A).
 
 Returns:
- Unary template that evaluates $(D fun).
+ Unary template that evaluates $(D expr).
 
 Examples:
 --------------------
@@ -774,6 +773,7 @@ static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
 
  In the next example, the generated template returns a sequence.
 --------------------
+import std.meta;
 import std.typecons;
 
 // Extracts the Types property of a Tuple instance.
@@ -788,15 +788,14 @@ static assert(is(Types[2] == string));
 See_Also:
  $(D meta.lambda)
  */
-template unaryT(string fun)
+template unaryT(string expr)
 {
-    alias unaryTGen!fun.unaryT unaryT;
+    alias unaryTGen!expr.unaryT unaryT;
 }
 
-/// ditto
-template unaryT(alias fun)
+template unaryT(alias templat)
 {
-    alias fun unaryT;
+    alias templat unaryT;
 }
 
 
@@ -814,7 +813,7 @@ private template unaryTGen(string expr)
 }
 
 
-unittest    // atomic
+unittest
 {
     alias unaryT!"a + 1" increment;
     alias unaryT!"A*" Pointify;
@@ -822,7 +821,7 @@ unittest    // atomic
     static assert(is(Pointify!int == int*));
 }
 
-unittest    // sequence
+unittest    // Test for sequence return
 {
     struct Tup(T...)
     {
@@ -843,31 +842,31 @@ unittest    // sequence
 
 unittest    // doc examples
 {
-    alias unaryT!"const A" Constify;
+    alias meta.unaryT!"const A" Constify;
     static assert(is(Constify!int == const int));
 
-    alias unaryT!"a.length" lengthof;
+    alias meta.unaryT!"a.length" lengthof;
     static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
 }
 
 
 
 /**
-Transforms a string representing an expression into a binary template.
+Transforms a string representing a compile-time entity into a binary template
+that returns the represented entity.
 
 Params:
- fun = Expression string or template declaration.  The string may use
-       named aliases $(D a) and $(D A) as the first parameter, $(D b)
-       and $(D B) as the second parameter.
+ expr = String representing a compile-time entity using two template
+        parameters: $(D a, A) as the first one and $(D b, B) the second.
 
 Returns:
- Binary template that evaluates $(D fun).
+ Binary template that evaluates $(D expr).
 
 Example:
  This example uses the first parameter $(D a) as a value and the second one
  $(D B) as a type, and returns a value.
 --------------------
-alias meta.binaryT!"a + B.sizeof" accumSize;
+alias meta.binaryT!q{ a + B.sizeof } accumSize;
 
 enum n1 = accumSize!( 0,    int);
 enum n2 = accumSize!(n1, double);
@@ -878,15 +877,14 @@ static assert(n3 == 4 + 8 + 2);
 See_Also:
  $(D meta.lambda)
  */
-template binaryT(string fun)
+template binaryT(string expr)
 {
-    alias binaryTGen!fun.binaryT binaryT;
+    alias binaryTGen!expr.binaryT binaryT;
 }
 
-/// ditto
-template binaryT(alias fun)
+template binaryT(alias templat)
 {
-    alias fun binaryT;
+    alias templat binaryT;
 }
 
 
@@ -909,7 +907,7 @@ private template binaryTGen(string expr)
 }
 
 
-unittest    // atomic
+unittest
 {
     alias binaryT!"B[A]" Assoc;
     alias binaryT!"A[b]" ArrayA;
@@ -921,7 +919,7 @@ unittest    // atomic
     static assert(div!(28, -7) == -4);
 }
 
-unittest    // sequence
+unittest    // Test for sequence return
 {
     alias binaryT!"Seq!(a, b, 3)" ab3;
     static assert([ ab3!(10, 20) ] == [ 10, 20, 3 ]);
@@ -929,13 +927,39 @@ unittest    // sequence
 
 unittest    // doc example
 {
-    alias binaryT!"a + B.sizeof" accumSize;
+    alias meta.binaryT!"a + B.sizeof" accumSize;
     enum n1 = accumSize!( 0,    int);
     enum n2 = accumSize!(n1, double);
     enum n3 = accumSize!(n2,  short);
     static assert(n3 == 4 + 8 + 2);
 }
 
+
+
+// Generic mixins for variadicT and lambda.  These templates install
+// one-letter symbols aliasing template arguments or captures.
+private
+{
+    mixin template _parameters(size_t n, size_t i = 0)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
+                                       ~ "ABCDEFGH"[i] ~";");
+            mixin _parameters!(n, i + 1);
+        }
+    }
+
+    mixin template _captures(size_t n, size_t i = 0)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin("alias Id!(captures[i]) "~ "pqrstuvw"[i] ~","
+                                           ~ "PQRSTUVW"[i] ~";");
+            mixin _captures!(n, i + 1);
+        }
+    }
+}
 
 
 /**
@@ -956,24 +980,22 @@ Returns:
 
 Example:
 --------------------
-alias meta.variadicT!"a" takeFront;
+alias meta.variadicT!q{ meta.Seq!(args[1 .. $], A) } rotate1;
 
-static assert(takeFront!(1, 2, 3) == 1);
-static assert(takeFront!("pq", 8) == "pq");
+static assert([ rotate1!(1, 2, 3, 4) ] == [ 2, 3, 4, 1 ]);
 --------------------
 
 See_Also:
  $(D meta.lambda)
  */
-template variadicT(string fun)
+template variadicT(string expr)
 {
-    alias variadicTGen!fun.variadicT variadicT;
+    alias variadicTGen!expr.variadicT variadicT;
 }
 
-/// ditto
-template variadicT(alias fun)
+template variadicT(alias templat)
 {
-    alias fun variadicT;
+    alias templat variadicT;
 }
 
 
@@ -981,33 +1003,16 @@ private template variadicTGen(string expr)
 {
     template variadicT(args...) { alias _variadicT!args._ variadicT; }
 
- private:
-
-    template _variadicT(args...)
+    private template _variadicT(args...)
     {
-        mixin _parameters!(0, +args.length);
+        // @@@BUG4886@@@ workaround '+'
+        mixin _parameters!(+args.length);
         mixin _installLambdaExpr!expr;      // installs '_'
-    }
-
-    // Mix in parameter symbols: a-h.
-    mixin template _parameters(size_t i, size_t n)
-    {
-        static if (i < n && i < 8)
-        {
-            mixin _parameter !(i       );
-            mixin _parameters!(i + 1, n);
-        }
-    }
-
-    mixin template _parameter(size_t i)
-    {
-        mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
-                                   ~ "ABCDEFGH"[i] ~";");
     }
 }
 
 
-unittest    // atomic
+unittest
 {
     alias variadicT!"a + b*c" addMul;
     static assert(addMul!(2,  3,  5) == 2 +  3* 5);
@@ -1016,7 +1021,7 @@ unittest    // atomic
     alias variadicT!"[ g, e, c, a, b, d, f, h ]" shuffle;
     static assert(shuffle!(1,2,3,4,5,6,7,8) == [ 7,5,3,1,2,4,6,8 ]);
 
-    // Capitalized parameters
+    // Using uppercase parameters
     alias variadicT!"const(B)[A]" MakeConstAA;
     static assert(is(MakeConstAA!(int, double) == const(double)[int]));
     static assert(is(MakeConstAA!(int, string) == const(string)[int]));
@@ -1027,17 +1032,17 @@ unittest    // atomic
                      == pack!(short, dchar, string, int,
                               double, bool, void*, byte)));
 
-    // Mixing capitalized and non-capitalized parameters
+    // Mixing multicase parameters
     alias variadicT!"A[b][c]" Make2D;
     static assert(is(Make2D!(   int, 10, 20) ==    int[10][20]));
     static assert(is(Make2D!(double, 30, 10) == double[30][10]));
 
     // args
-    alias variadicT!"+args.length" numberof;
-    static assert(numberof!(1,2,3,4,5,6,7,8,9) == 9);
+    alias variadicT!"+args.length" lengthof;
+    static assert(lengthof!(1,2,3,4,5,6,7,8,9) == 9);
 }
 
-unittest    // sequence
+unittest    // Test for sequence return
 {
     alias variadicT!"args[0 .. $/2]" halve;
     static assert([ halve!(1,2,3,4) ] == [ 1,2 ]);
@@ -1045,10 +1050,9 @@ unittest    // sequence
 
 unittest    // doc example
 {
-    alias variadicT!"a" takeFront;
+    alias meta.variadicT!q{ meta.Seq!(args[1 .. $], A) } rotate1;
 
-    static assert(takeFront!(1, 2, 3) == 1);
-    static assert(takeFront!("pq", 8) == "pq");
+    static assert([ rotate1!(1, 2, 3, 4) ] == [ 2, 3, 4, 1 ]);
 }
 
 
@@ -1063,13 +1067,14 @@ $(D meta.lambda) also supports recursions and local entity _captures.
 Params:
      decl = String representing a valid template body.  The body must
             declare a symbol $(D __) that represents the result of the
-            template.  The result may be overloaded.
+            template.  The result can be overloaded if it's a function
+            or a template.
 
             The body may use named parameters $(D a) to $(D h), $(D A) to
             $(D H) and $(D args).  Also, named _captures $(D p) to $(D w),
             $(D P) to $(D W) and $(D captures) are available.
 
-            The body may use an identifier $(D lambda) that refers to the
+            The body may use a symbol $(D lambda) that refers to the
             generated template itself.
 
  captures = Local compile-time entities (types, values, templates etc.) to
@@ -1077,7 +1082,7 @@ Params:
 
 Returns:
  Variadic template whose body is $(D decl) and evaluates to $(D __) declared
- in that body.
+ in the body.
 
 Recursion:
 
@@ -1085,10 +1090,10 @@ Recursion:
  identifier $(D lambda), and you can define recursive templates:
 --------------------
 // Remove pointer 'stars' from every type in a sequence.  The generated
-// template is passed to meta.map as a transoforming template.
+// template is passed to meta.map as a transoformer template.
 alias meta.map!(meta.lambda!(
                    q{
-                        static if (is(A T : T*))
+                        static if (is(A T == T*))
                         {
                             alias lambda!T _;   // recursion
                         }
@@ -1142,8 +1147,9 @@ private template lambdaGen(string decl, captures...)
 
     template _lambda(args...)
     {
-        mixin _parameters!(0,     +args.length);
-        mixin _captures  !(0, +captures.length);
+        // @@@BUG4886@@@ workaround '+'
+        mixin _parameters!(    +args.length);
+        mixin _captures  !(+captures.length);
         mixin _body;
     }
 
@@ -1154,65 +1160,83 @@ private template lambdaGen(string decl, captures...)
     {
         mixin(decl);
     }
-
-    // Mix in parameter symbols: a-h.
-    mixin template _parameters(size_t i, size_t n)
-    {
-        static if (i < n && i < 8)
-        {
-            mixin _parameter !(i       );
-            mixin _parameters!(i + 1, n);
-        }
-    }
-
-    mixin template _parameter(size_t i)
-    {
-        mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
-                                   ~ "ABCDEFGH"[i] ~";");
-    }
-
-    // Mix in captured entities: p-w.
-    mixin template _captures(size_t i, size_t n)
-    {
-        static if (i < n && i < 8)
-        {
-            mixin _capture !(i       );
-            mixin _captures!(i + 1, n);
-        }
-    }
-
-    mixin template _capture(size_t i)
-    {
-        mixin("alias Id!(captures[i]) "~ "pqrstuvw"[i] ~","
-                                       ~ "PQRSTUVW"[i] ~";");
-    }
 }
 
 
 unittest
 {
+    alias lambda!(
+           q{
+                // alias
+                alias A[] _;
+            })
+            DynArray;
+    static assert(is(DynArray!int == int[]));
+
+    alias lambda!(
+           q{
+                // private members and enum
+                enum x = a*a + b*b;
+                enum y = a*b;
+                enum _ = [ x, y ];
+            })
+            hypot2Area;
+    static assert(hypot2Area!(3, 4) == [ 25, 12 ]);
+
+    alias lambda!(
+           q{
+                // overloads
+                template _(    T) { alias A[T] _; }
+                template _(int n) { alias A[n] _; }
+            })
+            Arrayizer;
+    alias Arrayizer!int IntArrayizer;
+    static assert(is(IntArrayizer!string == int[string]));
+    static assert(is(IntArrayizer!1024 == int[1024]));
 }
 
-unittest    // capture
+unittest    // Test for captures
 {
-    struct Scope
-    {
-        struct Inner
-        {
-            enum value = 100;
-        }
-        alias meta.lambda!(
-                   q{
-                        enum _ = a*b - P.value;
-                    },
-                    Inner)  // P = Inner
-              myLambda;
-    }
-    static assert(Scope.myLambda!(3, 11) == -67);
+    alias lambda!(
+           q{
+                // lowercase captures
+                enum _ = [ p,q,r,s,t,u,v,w ] == [ 1,2,3,4,5,6,7,8 ];
+            },
+            1,2,3,4,5,6,7,8) testLowerCapts;
+    static assert(testLowerCapts!());
+
+    alias lambda!(
+           q{
+                // uppercase captures
+                enum _ = is(P ==  byte) && is(Q ==  short) &&
+                         is(R ==   int) && is(S ==   long) &&
+                         is(T == ubyte) && is(U == ushort) &&
+                         is(V ==  uint) && is(W ==  ulong);
+            },
+            byte, short, int, long,
+            ubyte, ushort, uint, ulong) testUpperCapts;
+    static assert(testUpperCapts!());
+
+    alias lambda!(
+           q{
+                // variadic captures
+                enum _ = [ captures ] == [ 1,2,3,4,5,6,7,8,9 ];
+            },
+            1,2,3,4,5,6,7,8,9) testVariadicCapts;
+    static assert(testVariadicCapts!());
 }
 
-unittest    // recursion
+unittest    // Test for recursion
 {
+    alias lambda!(
+           q{
+                static if (a <= 0)
+                    enum _ = 0;
+                else
+                    enum _ = a + lambda!(a - 1);
+            }) sum;
+    static assert(sum!9 == 45);
+    static assert(sum!0 ==  0);
 }
 
 unittest    // doc example (captures)
@@ -1221,28 +1245,26 @@ unittest    // doc example (captures)
     {
         static if (meta.any!(meta.lambda!(
                                 q{
-                                     // Is a parameter A implicitly
-                                     // convertible to P?
                                      enum _ = is(A : P);
                                  },
-                                 T),    // T is captured as 'P'
+                                 T),
                              UU))
         {
             static assert(0, "At least one type in "~ UU.stringof ~" is "
                             ~"implicitly convertible to "~ T.stringof);
         }
     }
-    Example!(int, string, double) Okay;
+    static assert( __traits(compiles, Example!(int, string, double) ));
+    static assert(!__traits(compiles, Example!(int, string,   bool) ));
 }
 
 unittest    // doc example (recursion)
 {
-    // Remove pointer 'stars' from every type in a sequence.
     alias meta.map!(meta.lambda!(
                        q{
                             static if (is(A T : T*))
                             {
-                                alias lambda!T _;   // recursion
+                                alias lambda!T _;
                             }
                             else
                             {
@@ -1259,97 +1281,126 @@ unittest    // doc example (recursion)
 
 
 /**
-$(D meta.bindFront) binds $(D front) as the leftmost parameters of a
-template $(D fun).  $(D meta.bindBack) binds $(D back) as the rightmost
-parameters.
+Binds $(D args) to the leftmost parameters of a template $(D templat).
 
 Params:
-   fun = Template or expression string.  Expression string is
-         transformed to a variadic template using $(D meta.variadicT).
- front = Zero or more template instantiation arguments to bind.
-  back = ditto
+ templat = Template or string that can be tranformed to a variadic template
+           using $(D meta.variadicT).
+    args = Zero or more template instantiation arguments to bind.
 
 Returns:
- A template that instantiates $(D fun) with the bound parameters and
- additional ones.
+ Template that instantiates $(D templat) with the bound arguments and
+ additional ones as $(D templat!(args, ...)).
 
-Examples:
+Example:
 --------------------
-template compare(T, U)
+template compareSize(T, U)
 {
-    enum compare = T.sizeof < U.sizeof;
+    enum compareSize = T.sizeof < U.sizeof;
 }
 
-// Bind T=int and U=int, respectively.
-alias meta.bindFront!(compare, int) isLargerThanInt; // compare!(int, ...)
-alias meta.bindBack!(compare, int) isSmallerThanInt; // compare!(..., int)
-
-// Usual template instantiations work.
-static assert( isLargerThanInt!double);
-static assert(!isLargerThanInt!short );
-
-static assert(!isSmallerThanInt!double);
-static assert( isSmallerThanInt!short );
+// Get the types satisfying "int.sizeof < U.sizeof".
+alias meta.filter!(meta.bind!(compareSize, int),
+                   byte, double, short, int, long) Result;
+static assert(is(Result == meta.Seq!(double, long) ));
 --------------------
  */
-template bindFront(alias fun, front...)
+template bind(alias templat, args...)
 {
-    template bindFront(rest...)
+    template bind(rest...)
     {
-        alias fun!(front, rest) bindFront;
+        alias apply!(variadicT!templat, args, rest) bind;
     }
 }
 
-/// ditto
-template bindFront(string fun, front...)
+
+unittest
 {
-    alias bindFront!(variadicT!fun, front) bindFront;
+    alias bind!("A[B]") Assoc;
+    alias bind!("A[B]", short) ShortAssoc;
+    alias bind!("A[B]", int, double) IntDouble;
+    static assert(is(Assoc!(uint, void*) == uint[void*]));
+    static assert(is(ShortAssoc!string == short[string]));
+    static assert(is(IntDouble!() == int[double]));
 }
 
-/// ditto
-template bindBack(alias fun, back...)
+unittest    // doc example
 {
-    template bindBack(args...)
+    struct Scope
     {
-        alias fun!(args, back) bindBack;
+        template compareSize(T, U)
+        {
+            enum compareSize = T.sizeof < U.sizeof;
+        }
+    }
+    alias Scope.compareSize compareSize;
+
+    alias meta.filter!(meta.bind!(compareSize, int),
+                       byte, double, short, int, long) Result;
+    static assert(is(Result == meta.Seq!(double, long) ));
+}
+
+
+
+/**
+Same as $(D meta.bind) except that $(D meta.rbind) binds arguments to
+rightmost parameters.
+
+Params:
+ templat = Template or string that can be tranformed to a variadic template
+           using $(D meta.variadicT).
+    args = Zero or more template instantiation arguments to bind.
+
+Returns:
+ Template that instantiates $(D templat) with the bound arguments and
+ additional ones as $(D templat!(..., args)).
+
+Example:
+--------------------
+template compareSize(T, U)
+{
+    enum compareSize = T.sizeof < U.sizeof;
+}
+
+// Get the types satisfying "T.sizeof < int.sizeof"
+alias meta.filter!(meta.rbind!(compareSize, int),
+                   byte, double, short, int, long) Result;
+static assert(is(Result == meta.Seq!(byte, short) ));
+--------------------
+ */
+template rbind(alias templat, args...)
+{
+    template rbind(rest...)
+    {
+        alias apply!(variadicT!templat, rest, args) rbind;
     }
 }
 
-/// ditto
-template bindBack(string fun, back...)
+
+unittest
 {
-    alias bindBack!(variadicT!fun, back) bindBack;
+    alias rbind!("A[B]") Assoc;
+    alias rbind!("A[B]", short) AssocShort;
+    alias rbind!("A[B]", int, double) IntDouble;
+    static assert(is(Assoc!(uint, void*) == uint[void*]));
+    static assert(is(AssocShort!string == string[short]));
+    static assert(is(IntDouble!() == int[double]));
 }
 
-
-unittest    // template
+unittest    // doc example
 {
-    alias bindFront!(Seq) frontEmpty;
-    alias bindBack !(Seq)  backEmpty;
-    static assert(frontEmpty!().length == 0);
-    static assert( backEmpty!().length == 0);
-    static assert([ frontEmpty!(1,2,3) ] == [ 1,2,3 ]);
-    static assert([  backEmpty!(1,2,3) ] == [ 1,2,3 ]);
+    struct Scope
+    {
+        template compareSize(T, U)
+        {
+            enum compareSize = T.sizeof < U.sizeof;
+        }
+    }
+    alias Scope.compareSize compareSize;
 
-    alias bindFront!(Seq, 1,2,3) front123;
-    alias bindBack !(Seq, 1,2,3)  back123;
-    static assert([ front123!() ] == [ 1,2,3 ]);
-    static assert([  back123!() ] == [ 1,2,3 ]);
-    static assert([ front123!(4,5,6) ] == [ 1,2,3,4,5,6 ]);
-    static assert([  back123!(4,5,6) ] == [ 4,5,6,1,2,3 ]);
-}
-
-unittest    // string
-{
-    alias bindFront!"a - b" subF;
-    alias bindBack !"a - b" subB;
-    static assert(subF!(5, 3) == 2);
-    static assert(subB!(5, 3) == 2);
-
-    alias bindFront!("a - b", 5) sub5b;
-    alias bindBack !("a - b", 5) suba5;
-    static assert(sub5b!(7) == -2);
-    static assert(suba5!(7) ==  2);
+    alias meta.filter!(meta.rbind!(compareSize, int),
+                       byte, double, short, int, long) Result;
+    static assert(is(Result == meta.Seq!(byte, short) ));
 }
 
 
@@ -1398,21 +1449,21 @@ template not(string pred)
 }
 
 
-unittest    // template
+unittest
 {
     alias not!(isSame!int) notInt;
     static assert( notInt!double);
     static assert( notInt!"none");
     static assert(!notInt!int   );
 
-    // double inverting
+    // double invert
     alias not!notInt isInt;
     static assert(!isInt!double);
     static assert(!isInt!"none");
     static assert( isInt!int   );
 }
 
-unittest    // string
+unittest
 {
     alias not!"a == 5" notFive;
     static assert( notFive!4);
@@ -1427,15 +1478,24 @@ unittest    // string
 
 unittest    // doc example
 {
-    alias unaryT!"is(A == struct) || is(A == union)" isStruct;
+    struct Scope
+    {
+        template isStruct(T)
+        {
+            enum isStruct = is(T == struct) || is(T == union);
+        }
+    }
+    alias Scope.isStruct isStruct;
+
     struct S {}
     union  U {}
     class  C {}
 
-    enum n = countBy!(not!isStruct,
-                      int, double, S, U, C);
+    enum n = meta.countBy!(meta.not!isStruct,
+                           int, double, S, U, C);
     static assert(n == 3);
 }
+
 
 
 /**
@@ -1443,17 +1503,17 @@ Composes predicate templates with the logical $(D &&) operator.
 
 The predicates will be evaluated in the same order as passed to this
 template.  The evaluations are lazy; if one of the predicates is not
-satisfied, $(D andAnd) immediately returns $(D false) without evaluating
-the remaining predicates.
+satisfied, $(D meta.and) immediately returns $(D false) without evaluating
+remaining predicates.
 
 Params:
- preds = Zero or more predicate templates of the same arity.  This
-         argument may be empty; in that case, the resulting template
-         constantly evaluates to $(D true).
+ preds = Zero or more predicate templates to compose.  This argument can be
+         empty; in that case, the resulting template constantly evaluates to
+         $(D true).
 
 Returns:
- Variadic predicate template that determines if its arguments satisfy
- all the predicates $(D preds).
+ Composition predicate template that tests if its arguments satisfy all the
+ predicates $(D preds).
 
 Example:
 --------------------
@@ -1464,21 +1524,54 @@ template isIntegral(T)
                                 ubyte, ushort, uint, ulong);
 }
 
-// Look for a short integral type.
-alias meta.findBy!(meta.andAnd!(isIntegral,
-                                "A.sizeof < 4"),
-                   int, double, byte, string, void) result;
-static assert(is(result == meta.Seq!(byte, string, void)));
+// Look for a tiny integral type: byte.
+enum k = meta.indexBy!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
+                       int, void, double, byte, string);
+static assert(k == 3);
 --------------------
  */
-template andAnd(preds...)
+template and(preds...)
 {
-    template andAnd(args...)
+    template and(args...)
     {
-        enum andAnd = all!(applier!args, preds);
+        enum and = all!(applier!args, preds);
     }
 }
 
+
+unittest
+{
+    struct Scope
+    {
+        template isConst(T)
+        {
+            enum isConst = is(T == const);
+        }
+    }
+    alias Scope.isConst isConst;
+
+    // Compose nothing
+    alias and!() yes;
+    static assert(yes!());
+
+    // No actual composition
+    alias and!isConst isConst2;
+    static assert( isConst2!(const int));
+    static assert(!isConst2!(      int));
+
+    // Compose template and string
+    alias and!(isConst, q{ A.sizeof < 4 }) isTinyConst;
+    static assert( isTinyConst!(const short));
+    static assert(!isTinyConst!(      short));
+    static assert(!isTinyConst!(const   int));
+    static assert(!isTinyConst!(        int));
+
+    // Test for laziness
+    alias and!(q{ is(A : ulong) }, q{ A.min < 0 }) isSignedInt;
+    static assert( isSignedInt!int);
+    static assert(!isSignedInt!uint);
+    static assert(!isSignedInt!string);  // no error despite the lack of .min
+}
 
 unittest    // doc example
 {
@@ -1491,10 +1584,11 @@ unittest    // doc example
                                         ubyte, ushort, uint, ulong);
         }
     }
-    alias meta.findBy!(meta.andAnd!(Scope.isIntegral,
-                                    "A.sizeof < 4"),
-                       int, double, byte, string, void) result;
-    static assert(is(result == meta.Seq!(byte, string, void)));
+    alias Scope.isIntegral isIntegral;
+
+    enum k = meta.indexBy!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
+                           int, void, double, byte, string);
+    static assert(k == 3);
 }
 
 
@@ -1504,42 +1598,61 @@ Composes predicate templates with the logical $(D ||) operator.
 
 The predicates will be evaluated in the same order as passed to this
 template.  The evaluations are lazy; if one of the predicates is
-satisfied, $(D orOr) immediately returns $(D true) without evaluating
-the remaining predicates.
+satisfied, $(D meta.or) immediately returns $(D true) without evaluating
+remaining predicates.
 
 Params:
- preds = Zero or more predicate templates of the same arity.  This
-         argument may be empty; in that case, the resulting template
-         constantly evaluates to $(D false).
+ preds = Zero or more predicate templates to compose.  This argument can be
+         empty; in that case, the resulting template constantly evaluates to
+         $(D false).
 
 Returns:
- Variadic predicate template that determines if its arguments satisfy
- at least one of the predicates $(D preds).
+ Composition predicate template that tests if its arguments satisfy at least
+ one of the predicates $(D preds).
 
 Example:
 --------------------
-template isString(T)
-{
-    enum isString = is(T == string);
-}
-alias meta.orOr!("a == 0", isString) zeroOrInt;
-
-// Since 0 satisfies the first predicate, zeroOrInt does not evaluate
-// isString!(0) that will result in an error.
-static assert(zeroOrInt!0);
+// Note that bool doesn't have the .min property.
+alias meta.filter!(meta.or!(q{ A.sizeof < 4 }, q{ A.min < 0 }),
+                   bool, ushort, int, uint) R;
+static assert(is(R == meta.Seq!(bool, ushort, int)));
 --------------------
  */
-template orOr(preds...)
+template or(preds...)
 {
-    template orOr(args...)
+    template or(args...)
     {
-        enum orOr = any!(applier!args, preds);
+        enum or = any!(applier!args, preds);
     }
 }
 
 
 unittest
 {
+    struct Scope
+    {
+        template isConst(T)
+        {
+            enum isConst = is(T == const);
+        }
+    }
+    alias Scope.isConst isConst;
+
+    // Compose nothing
+    alias or!() no;
+    static assert(!no!());
+
+    // No actual composition
+    alias or!isConst isConst2;
+    static assert( isConst2!(const int));
+    static assert(!isConst2!(      int));
+
+    // Compose template and string
+    alias or!(isConst, q{ A.sizeof < 4 }) isTinyOrConst;
+    static assert( isTinyOrConst!(const short));
+    static assert( isTinyOrConst!(      short));
+    static assert( isTinyOrConst!(const   int));
+    static assert(!isTinyOrConst!(        int));
 }
 
 unittest    // doc example
@@ -1551,37 +1664,94 @@ unittest    // doc example
             enum isString = is(T == string);
         }
     }
-    alias meta.orOr!("a == 0", Scope.isString) zeroOrInt;
+    alias Scope.isString isString;
+
+    alias meta.or!("a == 0", isString) zeroOrInt;
     static assert(zeroOrInt!0);
 }
 
 
 
 /**
-.
+$(D compose!(t1, t2, ..., tn)) returns a variadic template that in turn
+instantiates the passed in templates in a chaining way:
+----------
+template composition(args...)
+{
+    alias t1!(t2!( ... tn!(args) ... )) composition;
+}
+----------
 
 Params:
- templates = .
+ templates = One or more templates making up the chain.  Each template
+             can be a template or a string; strings are transformed to
+             varadic templates using $(D meta.variadicT).
 
 Returns:
- .
+ New template that instantiates the chain of $(D templates).
 
 Example:
---------------------
-.
---------------------
+----------
+alias meta.compose!(q{ A[] },
+                    q{ const A }) ConstArray;
+static assert(is(ConstArray!int == const(int)[]));
+----------
  */
-template compose(templates...)
+template compose(templates...) if (templates.length > 0)
 {
-    template compose()
+    template compose(args...)
     {
-        // TODO
+        alias apply!(reduce!(.compose, templates), args) compose;
+    }
+}
+
+template compose(alias f, alias g)
+{
+    template compose(args...)
+    {
+        // NOTE: f and g might be strings.
+        alias apply!(f, apply!(g, args)) compose;
     }
 }
 
 
 unittest
 {
+    struct Scope
+    {
+        template Const(T) { alias const(T) Const; }
+        template Array(T) { alias T[] Array; }
+    }
+    alias Scope.Const Const;
+    alias Scope.Array Array;
+
+    // No actual composition
+    alias compose!Const Const1;
+    alias compose!"a * 7" mul1;
+    static assert(is(Const1!int == const int));
+    static assert(mul1!11 == 77);
+
+    // Two templates
+    alias compose!(Array, Const) ArrayConst;
+    static assert(is(ArrayConst!int == const(int)[]));
+
+    alias compose!(Seq, "a / b") SeqDiv;
+    static assert(SeqDiv!(77, 11).length == 1);
+    static assert(SeqDiv!(77, 11)[0] == 7);
+
+    alias compose!("[ args ]", reverse) arrayRev;
+//  static assert(arrayRev!(1,2,3) == [ 3,2,1 ]);   // @@@BUG3276@@@
+
+    // More compositions
+    alias compose!("a * 11", "a + 7", "-a") mul11add7neg;
+    static assert(mul11add7neg!(-6) == (6 + 7) * 11);
+}
+
+unittest    // doc example
+{
+    alias meta.compose!(q{ A[] },
+                        q{ const A }) ConstArray;
+    static assert(is(ConstArray!int == const(int)[]));
 }
 
 
@@ -2053,7 +2223,7 @@ static assert(   extracted[1] == 5.0    );
  */
 template extract(alias indices, seq...)
 {
-    alias map!(bindBack!(extractAt, seq), expand!indices) extract;
+    alias map!(rbind!(extractAt, seq), expand!indices) extract;
 }
 
 
@@ -2378,7 +2548,7 @@ Example:
 --------------------
  */
 template transverse(size_t i, seqs...)
-    if (all!(andAnd!(isPacked, isLongerThan!i), seqs))
+    if (all!(and!(isPacked, isLongerThan!i), seqs))
 {
     static if (seqs.length == 1)
     {
@@ -2531,7 +2701,7 @@ private
         // subcartesian product tuples.
         template consMap(car...)
         {
-            alias map!(bindBack!(insertFront, car), subCartesian) consMap;
+            alias map!(rbind!(insertFront, car), subCartesian) consMap;
         }
         alias map!(consMap, first.expand) Result;
     }
@@ -2573,7 +2743,7 @@ static assert(is(PP[2] ==  void**));
  Doubling elements by passing a template returning a sequence.
 --------------------
 // Twice = (int, int, bool, bool, string, string)
-alias meta.map!(meta.bindFront!(meta.repeat, 2),
+alias meta.map!(meta.bind!(meta.repeat, 2),
                 int, bool, string) Twice;
 --------------------
  */
@@ -3076,7 +3246,7 @@ template removeDuplicatesBy(alias eq, seq...)
     else
     {
         alias Seq!(seq[0], removeDuplicatesBy!(
-                               removeBy!(bindFront!(eq, seq[0]),
+                               removeBy!(bind!(eq, seq[0]),
                                          seq[1 .. $])))
               removeDuplicatesBy;
     }
