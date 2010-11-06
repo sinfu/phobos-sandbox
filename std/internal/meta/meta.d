@@ -1901,9 +1901,9 @@ template guard(alias f, alias g)
     }
 }
 
-template guard(string f, alias  g) { alias guard!(variadicT!f,           g) guard; }
-template guard(alias  f, string g) { alias guard!(          f, variadicT!g) guard; }
-template guard(string f, string g) { alias guard!(variadicT!f, variadicT!g) guard; }
+template guard(string f, alias  g) { alias .guard!(variadicT!f,           g) guard; }
+template guard(alias  f, string g) { alias .guard!(          f, variadicT!g) guard; }
+template guard(string f, string g) { alias .guard!(variadicT!f, variadicT!g) guard; }
 
 
 unittest
@@ -3482,59 +3482,64 @@ static assert(size == 4 + 8 + 2 + 1 + 4);
 --------------------
 
 See_Also:
- $(D scan), a variant that also returns intermediate results.
+ $(D meta.scan)
  */
 template reduce(alias fun, Seed, seq...)
 {
-    static if (seq.length == 1)
-    {
-        alias fun!(Seed, seq[0]) reduce;
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        alias reduce!(fun, reduce!(fun, Seed, seq[ 0  .. $/2]),
-                                              seq[$/2 ..  $ ]) reduce;
-    }
+    alias _reduce!(binaryT!fun, Seed, seq) reduce;
 }
-
-// Degeneracy case.
-template reduce(alias fun, Seed) { alias Seed reduce; }
-
 
 /// ditto
 template reduce(alias fun, alias Seed, seq...)
 {
-    static if (seq.length == 1)
-    {
-        alias fun!(Seed, seq[0]) reduce;
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        alias reduce!(fun, reduce!(fun, Seed, seq[ 0  .. $/2]),
-                                              seq[$/2 ..  $ ]) reduce;
-    }
+    alias _reduce!(binaryT!fun, Seed, seq) reduce;
 }
 
-// Degeneracy case.
-template reduce(alias fun, alias Seed) { alias Seed reduce; }
-
-
-// Hook expression strings
-template reduce(string fun, Seed, seq...)
+private
 {
-    alias reduce!(binaryT!fun, Seed, seq) reduce;
-}
+    template _reduce(alias fun,       Seed) { alias Seed _reduce; }
+    template _reduce(alias fun, alias Seed) { alias Seed _reduce; }
+    template _reduce(alias fun,       Seed, seq...) { mixin(_reduceBody); }
+    template _reduce(alias fun, alias Seed, seq...) { mixin(_reduceBody); }
 
-template reduce(string fun, alias Seed, seq...)
-{
-    alias reduce!(binaryT!fun, Seed, seq) reduce;
+    enum _reduceBody =
+    q{
+        static if (seq.length == 1)
+        {
+            alias fun!(Seed, seq[0]) _reduce;
+        }
+        else
+        {
+            // Halving seq reduces the recursion depth.
+            alias _reduce!(fun, _reduce!(fun, Seed, seq[ 0  .. $/2]),
+                                                    seq[$/2 ..  $ ]) _reduce;
+        }
+    };
 }
 
 
 unittest
 {
+    alias reduce!(q{ A[B] }, int, double, string) MultiAssoc;
+    static assert(is(MultiAssoc == int[double][string]));
+
+    enum concat = reduce!(q{ a ~ b }, "abc", "123", "xyz", "987");
+    static assert(concat == "abc123xyz987");
+
+    // Test for non-ambiguity
+    struct S {}
+    alias reduce!(        q{ A[B] }, S) K1;
+    alias reduce!(binaryT!q{ A[B] }, S) K2;
+    enum s1 = reduce!(        q{ a ~ b }, "");
+    enum s2 = reduce!(binaryT!q{ a ~ b }, "");
+}
+
+unittest    // doc example
+{
+    alias meta.Seq!(int, double, short, bool, dchar) Types;
+
+    enum size = meta.reduce!(q{ a + B.sizeof }, 0, Types);
+    static assert(size == 4 + 8 + 2 + 1 + 4);
 }
 
 
