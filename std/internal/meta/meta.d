@@ -1756,6 +1756,83 @@ unittest    // doc example
 
 
 
+/**
+TBD
+
+The fixed template would be useful for a fallback case of $(D meta.guard).
+
+Params:
+ templat = .
+    args = .
+
+Returns:
+ Variadic template that constantly returns $(D templat!args) regardless of
+ its arguments.
+
+Example:
+----------
+alias meta.fix!(meta.Id, int) intFixed;
+static assert(is(intFixed!() == int));
+static assert(is(intFixed!void == int));
+static assert(is(intFixed!(1,2,3) == int));
+----------
+ */
+template fix(alias templat, args...)
+{
+    template fix(_...)
+    {
+        alias apply!(templat, args) fix;
+    }
+}
+
+
+unittest    // doc example
+{
+    alias meta.fix!(meta.Id, int) intFixed;
+    static assert(is(intFixed!() == int));
+    static assert(is(intFixed!void == int));
+    static assert(is(intFixed!(1,2,3) == int));
+}
+
+
+
+/**
+TBD
+
+Example:
+----------
+alias meta.guard!(q{ A.min < 0 }, q{ false }) hasNegativeMin;
+static assert( hasNegativeMin!int);
+static assert(!hasNegativeMin!uint);    // uint.min is non-negative
+static assert(!hasNegativeMin!void);    // void.min is not defined
+----------
+ */
+template guard(alias f, alias g)
+{
+    template guard(args...)
+    {
+        static if (__traits(compiles, apply!(f, args)))
+        {
+            alias apply!(f, args) guard;
+        }
+        else
+        {
+            alias apply!(g, args) guard;
+        }
+    }
+}
+
+
+unittest     // doc example
+{
+    alias meta.guard!(q{ A.min < 0 }, q{ false }) hasNegativeMin;
+    static assert( hasNegativeMin!int);
+    static assert(!hasNegativeMin!double);
+    static assert(!hasNegativeMin!void);
+}
+
+
+
 /* undocumented (for internal use) */
 template applier(args...)
 {
