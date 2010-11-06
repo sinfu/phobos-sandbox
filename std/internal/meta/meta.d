@@ -890,15 +890,12 @@ template binaryT(alias templat)
 
 private template binaryTGen(string expr)
 {
-    // These elaborate frontends will give better error messages.
-    template binaryT(      A,       B) { alias _binaryT!(A, B)._ binaryT; }
-    template binaryT(      A, alias b) { alias _binaryT!(A, b)._ binaryT; }
-    template binaryT(alias a,       B) { alias _binaryT!(a, B)._ binaryT; }
-    template binaryT(alias a, alias b) { alias _binaryT!(a, b)._ binaryT; }
+    template binaryT(AB...) if (AB.length == 2)
+    {
+        alias _binaryT!AB._ binaryT;
+    }
 
- private:
-
-    template _binaryT(args...)
+    private template _binaryT(args...)
     {
         alias Id!(args[0]) a, A;
         alias Id!(args[1]) b, B;
@@ -932,6 +929,15 @@ unittest    // doc example
     enum n2 = accumSize!(n1, double);
     enum n3 = accumSize!(n2,  short);
     static assert(n3 == 4 + 8 + 2);
+}
+
+unittest    // bug 4431
+{
+    alias binaryT!q{ B[A] } Assoc;
+    struct S {}
+    static assert(is(Assoc!(int, S) == S[int]));
+    static assert(is(Assoc!(S, int) == int[S]));
+    static assert(is(Assoc!(S, S) == S[S]));
 }
 
 
