@@ -2130,47 +2130,23 @@ foreach (i; meta.iota!(4, 8))
 }
 --------------------
  */
-template iota(alias beg, alias end, alias step)
-    if (step != 0)
+template iota(alias beg, alias end, alias step) if (step <> 0)
 {
-    // FIXME
-
-    static if (beg >= end)
-    {
-        alias Seq!() iota;
-    }
-    else static if (beg + step >= end)
-    {
-        // Unary '+' converts the symbol beg to a literal value.
-        alias Seq!(+beg) iota;
-    }
-    else
-    {
-        // To reduce the recursion depth.
-        alias Seq!(iota!(beg, _iotaMid!(beg, end)     ),
-                   iota!(     _iotaMid!(beg, end), end)) iota;
-    }
+    // TODO
 }
 
 /// ditto
 template iota(alias beg, alias end)
 {
-    alias iota!(beg, end, cast(typeof(beg)) 1) iota;
+    // TODO
 }
 
 /// ditto
 template iota(alias end)
 {
-    alias iota!(cast(typeof(end)) 0, end) iota;
+    // TODO
 }
 
-
-// iota
-private template _iotaMid(alias beg, alias end)
-{
-    // Computes the proper mid value.
-    enum typeof(beg) _iotaMid = beg + (end - beg) / 2;
-}
 
 
 unittest
