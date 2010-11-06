@@ -4020,10 +4020,9 @@ Returns:
  returns $(D true); and $(D meta.any) returns $(D false).
 
 Example:
- These templates would be very useful in template constraints:
+ These templates would be useful in template constraints:
 --------------------
-import std.meta;
-import std.range;
+import std.meta, std.range, std.typecons;
 
 // This function requires all arguments should be input ranges.
 auto dropFront(Ranges...)(ref Ranges ranges)
@@ -4060,32 +4059,41 @@ template all(alias pred, seq...)
     }
 }
 
-template all(alias pred) { enum all = true; }
+template all(alias  pred) { enum all = true; }
+template all(string pred) { enum all = true; }
 
 // Hook for expression strings.
-template all(string pred, seq...)
-{
-    enum all = all!(unaryT!pred, seq);
-}
+template all(string pred, seq...) { enum all = all!(unaryT!pred, seq); }
 
 
 unittest
 {
-    // Laziness
     struct Scope
     {
         template isZero(int n) { enum isZero = (n == 0); }
     }
-    static assert(!all!(Scope.isZero, 1, int));
-    static assert(!all!(Scope.isZero, 0, 1, int));
-    static assert(!all!(Scope.isZero, 0, 0, 1, int));
-    static assert(!all!(Scope.isZero, 0, 0, 0, 1, int));
+    alias Scope.isZero isZero;
+
+    static assert( all!(isZero));
+    static assert( all!(isZero, 0));
+    static assert(!all!(isZero, 1));
+    static assert(!all!(isZero, 1, 2));
+    static assert(!all!(isZero, 0, 1, 2));
+    static assert( all!(isZero, 0, 0, 0));
+
+    // Laziness
+    static assert(!all!(isZero, 1, int));
+    static assert(!all!(isZero, 0, 1, int));
+    static assert(!all!(isZero, 0, 0, 1, int));
+    static assert(!all!(isZero, 0, 0, 0, 1, int));
+
+    // String
+    static assert(all!(q{ is(A == const) }));
+    static assert(all!(q{ is(A == const) }, const int));
 }
 
 
-/**
-ditto
- */
+/** ditto */
 template any(alias pred, seq...)
 {
     enum any = !all!(not!pred, seq);
@@ -4094,44 +4102,68 @@ template any(alias pred, seq...)
 
 unittest
 {
-    // Laziness
     struct Scope
     {
         template isZero(int n) { enum isZero = (n == 0); }
     }
-    static assert(any!(Scope.isZero, 0, int));
-    static assert(any!(Scope.isZero, 1, 0, int));
-    static assert(any!(Scope.isZero, 1, 2, 0, int));
-    static assert(any!(Scope.isZero, 1, 2, 3, 0, int));
+    alias Scope.isZero isZero;
+
+    static assert(!any!(isZero));
+    static assert( any!(isZero, 0));
+    static assert(!any!(isZero, 1));
+    static assert(!any!(isZero, 1, 2));
+    static assert( any!(isZero, 0, 1, 2));
+    static assert( any!(isZero, 0, 0, 0));
+
+    // Laziness
+    static assert(any!(isZero, 0, int));
+    static assert(any!(isZero, 1, 0, int));
+    static assert(any!(isZero, 1, 2, 0, int));
+    static assert(any!(isZero, 1, 2, 3, 0, int));
+
+    // String
+    static assert(!any!(q{ is(A == const) }));
+    static assert( any!(q{ is(A == const) }, const int));
 }
 
 
-/**
-ditto
- */
+/** ditto */
 template none(alias pred, seq...)
 {
-    enum none = !any!(pred, seq);
+    enum none = all!(not!pred, seq);
 }
 
 
 unittest
 {
-    // Laziness
     struct Scope
     {
         template isZero(int n) { enum isZero = (n == 0); }
     }
-    static assert(!none!(Scope.isZero, 0, int));
-    static assert(!none!(Scope.isZero, 1, 0, int));
-    static assert(!none!(Scope.isZero, 1, 2, 0, int));
-    static assert(!none!(Scope.isZero, 1, 2, 3, 0, int));
+    alias Scope.isZero isZero;
+
+    static assert( none!(isZero));
+    static assert(!none!(isZero, 0));
+    static assert( none!(isZero, 1));
+    static assert( none!(isZero, 1, 2));
+    static assert(!none!(isZero, 0, 1, 2));
+    static assert(!none!(isZero, 0, 0, 0));
+
+    // Laziness
+    static assert(!none!(isZero, 0, int));
+    static assert(!none!(isZero, 1, 0, int));
+    static assert(!none!(isZero, 1, 2, 0, int));
+    static assert(!none!(isZero, 1, 2, 3, 0, int));
+
+    // String
+    static assert( none!(q{ is(A == const) }));
+    static assert(!none!(q{ is(A == const) }, const int));
 }
 
 
 
 /**
-Determines if only one of the elements of $(D seq) satisfies the predicate
+Determines if _only one of the elements of $(D seq) satisfies the predicate
 $(D pred).  The predicate is tested for all the elements.
 
 Params:
@@ -4139,13 +4171,24 @@ Params:
   seq = Zero or more compile-time entities to examine.
 
 Returns:
- $(D true) if $(D seq) is not empty and only one of the elements satisfies
+ $(D true) if $(D seq) is not empty and _only one of the elements satisfies
  the predicate.  Otherwise, $(D false) is returned.
 
 Example:
---------------------
-.
---------------------
+----------
+// Allow only one class in a base class list.
+template isValidBase(Bases...)
+{
+    enum isValidBase = meta.only!(q{ is(A == class) }, Bases);
+}
+
+class B {}
+class C {}
+interface I {}
+interface J {}
+static assert( isValidBase!(B, I, J));
+static assert(!isValidBase!(B, I, C));
+----------
  */
 template only(alias pred, seq...)
 {
@@ -4155,14 +4198,41 @@ template only(alias pred, seq...)
 
 unittest
 {
-    static assert(only!(q{ a == 0 }, 0,1,2,3,4,5,6));
-    static assert(only!(q{ a == 0 }, 1,2,3,0,4,5,6));
-    static assert(only!(q{ a == 0 }, 1,2,3,4,5,6,0));
+    struct Scope
+    {
+        template isZero(int n) { enum isZero = (n == 0); }
+    }
+    alias Scope.isZero isZero;
 
-    static assert(!only!(q{ a == 0 }, 0,0,1,2,3,4));
-    static assert(!only!(q{ a == 0 }, 1,2,0,0,3,4));
-    static assert(!only!(q{ a == 0 }, 0,1,2,3,4,0));
-    static assert(!only!(q{ a == 0 }));
+    static assert(!only!(isZero));
+    static assert( only!(isZero, 0));
+    static assert(!only!(isZero, 1));
+    static assert(!only!(isZero, 1, 2));
+    static assert( only!(isZero, 0, 1, 2));
+    static assert(!only!(isZero, 0, 0, 0));
+
+    // String
+    static assert(!only!(q{ is(A == const) }));
+    static assert( only!(q{ is(A == const) }, const int));
+}
+
+unittest    // doc example
+{
+    struct Scope
+    {
+        template isValidBase(Bases...)
+        {
+            enum isValidBase = meta.only!(q{ is(A == class) }, Bases);
+        }
+    }
+    alias Scope.isValidBase isValidBase;
+
+    class B {}
+    class C {}
+    interface I {}
+    interface J {}
+    static assert( isValidBase!(B, I, J));
+    static assert(!isValidBase!(B, I, C));
 }
 
 
