@@ -250,28 +250,30 @@ partially applied template.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="unaryT"></a><u>unaryT</u>(string fun)<br>template <a name="unaryT"></a><u>unaryT</u>(alias fun)</div></dt>
-<dd>Transforms a string representing an expression into a unary template.
+<dt><div class="d_decl">template <a name="unaryT"></a><u>unaryT</u>(string expr)</div></dt>
+<dd>Transforms a string representing a compile-time entity into a unary template
+that returns the represented entity.
 <p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Expression string or template declaration.  The string may use
-       named parameter aliases <span class="d_inlinecode">a</span> and <span class="d_inlinecode">A</span>.</td></tr>
+<b>Parameters:</b><table class=parms><tr><td valign=top>expr</td>
+<td valign=top>String representing a compile-time entity using a template parameter
+        <span class="d_inlinecode">a</span> or <span class="d_inlinecode">A</span>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Unary template that evaluates <span class="d_inlinecode">fun</span>.
+<b>Returns:</b><br>Unary template that evaluates <span class="d_inlinecode">expr</span>.
 
 <p></p>
-<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"const A"</span> Constify;
+<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">q{ const A }</span> Constify;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Constify!<span class="d_keyword">int</span> == <span class="d_keyword">const</span> <span class="d_keyword">int</span>));
 
-<span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"a.length"</span> lengthof;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">q{ a.length }</span> lengthof;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(lengthof!([ 1,2,3,4,5 ]) == 5);
 </pre>
 
- In the next example, the generated template returns a sequence.
-<pre class="d_code"><span class="d_keyword">import</span> std.typecons;
+ The generated template can return a sequence.
+<pre class="d_code"><span class="d_keyword">import</span> std.meta;
+<span class="d_keyword">import</span> std.typecons;
 
 <span class="d_comment">// Extracts the Types property of a Tuple instance.
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">"A.Types"</span> expand;
+</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">unaryT</span>!<span class="d_string">q{ A.Types }</span> expand;
 
 <span class="d_keyword">alias</span> expand!(Tuple!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string)) Types;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[0] == <span class="d_keyword">int</span>));
@@ -283,21 +285,24 @@ partially applied template.
 <b>See Also:</b><br><span class="d_inlinecode">meta.lambda</span><p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="binaryT"></a><u>binaryT</u>(string fun)<br>template <a name="binaryT"></a><u>binaryT</u>(alias fun)</div></dt>
-<dd>Transforms a string representing an expression into a binary template.
+<dt><div class="d_decl">template <a name="binaryT"></a><u>binaryT</u>(string expr)</div></dt>
+<dd>Transforms a string representing a compile-time entity into a binary template
+that returns the represented entity.
 <p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Expression string or template declaration.  The string may use
-       named aliases <span class="d_inlinecode">a</span> and <span class="d_inlinecode">A</span> as the first parameter, <span class="d_inlinecode">b</span>
-       and <span class="d_inlinecode">B</span> as the second parameter.</td></tr>
+<b>Parameters:</b><table class=parms><tr><td valign=top>expr</td>
+<td valign=top>String representing a compile-time entity using two template</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Binary template that evaluates <span class="d_inlinecode">fun</span>.
+<b>parameters:</b><br>
+<span class="d_inlinecode">a, A</span> as the first one and <span class="d_inlinecode">b, B</span> the second.
+
+<p></p>
+<b>Returns:</b><br>Binary template that evaluates <span class="d_inlinecode">expr</span>.
 
 <p></p>
 <b>Example:</b><br>
 This example uses the first parameter <span class="d_inlinecode">a</span> as a value and the second one
  <span class="d_inlinecode">B</span> as a type, and returns a value.
-<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">binaryT</span>!<span class="d_string">"a + B.sizeof"</span> accumSize;
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">binaryT</span>!<span class="d_string">q{ a + B.sizeof }</span> accumSize;
 
 <span class="d_keyword">enum</span> n1 = accumSize!( 0,    <span class="d_keyword">int</span>);
 <span class="d_keyword">enum</span> n2 = accumSize!(n1, <span class="d_keyword">double</span>);
@@ -309,7 +314,7 @@ This example uses the first parameter <span class="d_inlinecode">a</span> as a v
 <b>See Also:</b><br><span class="d_inlinecode">meta.lambda</span><p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="variadicT"></a><u>variadicT</u>(string fun)<br>template <a name="variadicT"></a><u>variadicT</u>(alias fun)</div></dt>
+<dt><div class="d_decl">template <a name="variadicT"></a><u>variadicT</u>(string expr)</div></dt>
 <dd>Transforms a string representing an expression into a variadic template.
 The expression can read variadic arguments via <span class="d_inlinecode">args</span>.
 <p></p>
@@ -327,10 +332,9 @@ on the number of arguments.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">variadicT</span>!<span class="d_string">"a"</span> takeFront;
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">variadicT</span>!<span class="d_string">q{ meta.Seq!(args[1 .. $], A) }</span> rotate1;
 
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(takeFront!(1, 2, 3) == 1);
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(takeFront!(<span class="d_string">"pq"</span>, 8) == <span class="d_string">"pq"</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>([ rotate1!(1, 2, 3, 4) ] == [ 2, 3, 4, 1 ]);
 </pre>
 
 <p></p>
@@ -348,7 +352,8 @@ parameters can be accessed via <span class="d_inlinecode">args</span> and <span 
 <b>Parameters:</b><table class=parms><tr><td valign=top>decl</td>
 <td valign=top>String representing a valid template body.  The body must
             declare a symbol <span class="d_inlinecode">_</span> that represents the result of the
-            template.  The result may be overloaded.
+            template.  The result can be overloaded if it's a function
+            or a template.
 <p></p>
 
             The body may use named parameters <span class="d_inlinecode">a</span> to <span class="d_inlinecode">h</span>, <span class="d_inlinecode">A</span> to
@@ -356,24 +361,24 @@ parameters can be accessed via <span class="d_inlinecode">args</span> and <span 
             <span class="d_inlinecode">P</span> to <span class="d_inlinecode">W</span> and <span class="d_inlinecode">captures</span> are available.
 <p></p>
 
-            The body may use an identifier <span class="d_inlinecode"><a name="lambda"></a><u>lambda</u></span> that refers to the
+            The body may use a symbol <span class="d_inlinecode"><a name="lambda"></a><u>lambda</u></span> that refers to the
             generated template itself.</td></tr>
 <tr><td valign=top>captures</td>
 <td valign=top>Local compile-time entities (types, values, templates etc.) to
             make available in the generated template.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Variadic template whose body is <span class="d_inlinecode">decl</span> and evaluates to <span class="d_inlinecode">_</span> declared
- in that body.
+ in the body.
 
 <p></p>
 <b>Recursion:</b><br>
 The generated template itself is accessible from the string using an
  identifier <span class="d_inlinecode"><a name="lambda"></a><u>lambda</u></span>, and you can define recursive templates:
 <pre class="d_code"><span class="d_comment">// Remove pointer 'stars' from every type in a sequence.  The generated
-</span><span class="d_comment">// template is passed to meta.map as a transoforming template.
+</span><span class="d_comment">// template is passed to meta.map as a transoformer template.
 </span><span class="d_keyword">alias</span> meta.map!(meta.<span class="d_psymbol">lambda</span>!(
                    <span class="d_string">q{
-                        static if (is(A T : T*))
+                        static if (is(A T == T*))
                         {
                             alias lambda!T _;   // recursion
                         }
@@ -415,38 +420,87 @@ Example!(<span class="d_keyword">int</span>, string,   <span class="d_keyword">b
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="bindFront"></a><u>bindFront</u>(alias fun,front...)<br>template <a name="bindFront"></a><u>bindFront</u>(string fun,front...)<br>template <a name="bindBack"></a><u>bindBack</u>(alias fun,back...)<br>template <a name="bindBack"></a><u>bindBack</u>(string fun,back...)</div></dt>
-<dd><span class="d_inlinecode">meta.<a name="bindFront"></a><u>bindFront</u></span> binds <span class="d_inlinecode">front</span> as the leftmost parameters of a
-template <span class="d_inlinecode">fun</span>.  <span class="d_inlinecode">meta.bindBack</span> binds <span class="d_inlinecode">back</span> as the rightmost
-parameters.
+<dt><div class="d_decl">template <a name="bind"></a><u>bind</u>(alias templat,args...)</div></dt>
+<dd>Binds <span class="d_inlinecode">args</span> to the leftmost parameters of a template <span class="d_inlinecode">templat</span>.
 <p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Template or expression string.  Expression string is
-         transformed to a variadic template using <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
-<tr><td valign=top>front</td>
-<td valign=top>Zero or more template instantiation arguments to bind.</td></tr>
-<tr><td valign=top>back</td>
-<td valign=top>ditto</td></tr>
+<b>Parameters:</b><table class=parms><tr><td valign=top>templat</td>
+<td valign=top>Template or string that can be tranformed to a variadic template
+           using <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
+<tr><td valign=top>args</td>
+<td valign=top>Zero or more template instantiation arguments to <a name="bind"></a><u>bind</u>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>A template that instantiates <span class="d_inlinecode">fun</span> with the bound parameters and
- additional ones.
+<b>Returns:</b><br>Template that instantiates <span class="d_inlinecode">templat</span> with the bound arguments and
+ additional ones as <span class="d_inlinecode">templat!(args, ...)</span>.
 
 <p></p>
-<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">template</span> compare(T, U)
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">template</span> compareSize(T, U)
 {
-    <span class="d_keyword">enum</span> compare = T.sizeof &lt; U.sizeof;
+    <span class="d_keyword">enum</span> compareSize = T.sizeof &lt; U.sizeof;
 }
 
-<span class="d_comment">// Bind T=int and U=int, respectively.
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">bindFront</span>!(compare, <span class="d_keyword">int</span>) isLargerThanInt; <span class="d_comment">// compare!(int, ...)
-</span><span class="d_keyword">alias</span> meta.bindBack!(compare, <span class="d_keyword">int</span>) isSmallerThanInt; <span class="d_comment">// compare!(..., int)
-</span>
-<span class="d_comment">// Usual template instantiations work.
-</span><span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isLargerThanInt!<span class="d_keyword">double</span>);
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isLargerThanInt!<span class="d_keyword">short</span> );
+<span class="d_comment">// Get the types satisfying "int.sizeof &lt; U.sizeof".
+</span><span class="d_keyword">alias</span> meta.filter!(meta.<span class="d_psymbol">bind</span>!(compareSize, <span class="d_keyword">int</span>),
+                   <span class="d_keyword">byte</span>, <span class="d_keyword">double</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">long</span>) Result;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Result == meta.Seq!(<span class="d_keyword">double</span>, <span class="d_keyword">long</span>) ));
+</pre>
+<p></p>
 
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isSmallerThanInt!<span class="d_keyword">double</span>);
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isSmallerThanInt!<span class="d_keyword">short</span> );
+</dd>
+<dt><div class="d_decl">template <a name="rbind"></a><u>rbind</u>(alias templat,args...)</div></dt>
+<dd>Same as <span class="d_inlinecode">meta.bind</span> except that <span class="d_inlinecode">meta.<a name="rbind"></a><u>rbind</u></span> binds arguments to
+rightmost parameters.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>templat</td>
+<td valign=top>Template or string that can be tranformed to a variadic template
+           using <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
+<tr><td valign=top>args</td>
+<td valign=top>Zero or more template instantiation arguments to bind.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Template that instantiates <span class="d_inlinecode">templat</span> with the bound arguments and
+ additional ones as <span class="d_inlinecode">templat!(..., args)</span>.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">template</span> compareSize(T, U)
+{
+    <span class="d_keyword">enum</span> compareSize = T.sizeof &lt; U.sizeof;
+}
+
+<span class="d_comment">// Get the types satisfying "T.sizeof &lt; int.sizeof"
+</span><span class="d_keyword">alias</span> meta.filter!(meta.<span class="d_psymbol">rbind</span>!(compareSize, <span class="d_keyword">int</span>),
+                   <span class="d_keyword">byte</span>, <span class="d_keyword">double</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">long</span>) Result;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Result == meta.Seq!(<span class="d_keyword">byte</span>, <span class="d_keyword">short</span>) ));
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="fix"></a><u>fix</u>(alias templat,args...)</div></dt>
+<dd>Binds <span class="d_inlinecode">args</span> to all the parameters of <span class="d_inlinecode">templat</span>.  Generated template
+will instantiate <span class="d_inlinecode">templat</span> with just the bound arguments.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>templat</td>
+<td valign=top>Template or string to instantiate.</td></tr>
+<tr><td valign=top>args</td>
+<td valign=top>Complete arguments for <span class="d_inlinecode">templat</span>.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Variadic template that constantly returns <span class="d_inlinecode">templat!args</span> regardless of
+ its arguments.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.fixed!(meta.Id, <span class="d_keyword">int</span>) intFixed;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!() == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!(<span class="d_keyword">void</span>) == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!(1,2,3) == <span class="d_keyword">int</span>));
+</pre>
+
+ Using fixed template for a fallback case of <span class="d_inlinecode">meta.guard</span>:
+<pre class="d_code"><span class="d_keyword">struct</span> Error;
+
+<span class="d_keyword">alias</span> meta.guard!(<span class="d_string">q{ A[] }</span>, meta.<span class="d_psymbol">fix</span>!(meta.Id, Error)) Array;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Array!<span class="d_keyword">int</span> == <span class="d_keyword">int</span>[]));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Array!100 == Error));
 </pre>
 <p></p>
 
@@ -481,22 +535,22 @@ Passing an inverted predicate to the <span class="d_inlinecode">meta.countBy</sp
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="andAnd"></a><u>andAnd</u>(preds...)</div></dt>
+<dt><div class="d_decl">template <a name="and"></a><u>and</u>(preds...)</div></dt>
 <dd>Composes predicate templates with the logical <span class="d_inlinecode">&amp;&amp;</span> operator.
 <p></p>
 The predicates will be evaluated in the same order as passed to this
 template.  The evaluations are lazy; if one of the predicates is not
-satisfied, <span class="d_inlinecode"><a name="andAnd"></a><u>andAnd</u></span> immediately returns <span class="d_inlinecode"><b>false</b></span> without evaluating
-the remaining predicates.
+satisfied, <span class="d_inlinecode">meta.<a name="and"></a><u>and</u></span> immediately returns <span class="d_inlinecode"><b>false</b></span> without evaluating
+remaining predicates.
 
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>preds</td>
-<td valign=top>Zero or more predicate templates of the same arity.  This
-         argument may be empty; in that case, the resulting template
-         constantly evaluates to <span class="d_inlinecode"><b>true</b></span>.</td></tr>
+<td valign=top>Zero or more predicate templates to compose.  This argument can be
+         empty; in that case, the resulting template constantly evaluates to
+         <span class="d_inlinecode"><b>true</b></span>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Variadic predicate template that determines if its arguments satisfy
- all the predicates <span class="d_inlinecode">preds</span>.
+<b>Returns:</b><br>Composition predicate template that tests if its arguments satisfy all the
+ predicates <span class="d_inlinecode">preds</span>.
 
 <p></p>
 <b>Example:</b><br>
@@ -507,59 +561,102 @@ the remaining predicates.
                                 <span class="d_keyword">ubyte</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">ulong</span>);
 }
 
-<span class="d_comment">// Look for a short integral type.
-</span><span class="d_keyword">alias</span> meta.findBy!(meta.<span class="d_psymbol">andAnd</span>!(isIntegral,
-                                <span class="d_string">"A.sizeof &lt; 4"</span>),
-                   <span class="d_keyword">int</span>, <span class="d_keyword">double</span>, <span class="d_keyword">byte</span>, string, <span class="d_keyword">void</span>) result;
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(result == meta.Seq!(<span class="d_keyword">byte</span>, string, <span class="d_keyword">void</span>)));
+<span class="d_comment">// Look for a tiny integral type: byte.
+</span><span class="d_keyword">enum</span> k = meta.indexBy!(meta.<span class="d_psymbol">and</span>!(isIntegral, <span class="d_string">q{ A.sizeof &lt; 4 }</span>),
+                       <span class="d_keyword">int</span>, <span class="d_keyword">void</span>, <span class="d_keyword">double</span>, <span class="d_keyword">byte</span>, string);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(k == 3);
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="orOr"></a><u>orOr</u>(preds...)</div></dt>
+<dt><div class="d_decl">template <a name="or"></a><u>or</u>(preds...)</div></dt>
 <dd>Composes predicate templates with the logical <span class="d_inlinecode">||</span> operator.
 <p></p>
 The predicates will be evaluated in the same order as passed to this
 template.  The evaluations are lazy; if one of the predicates is
-satisfied, <span class="d_inlinecode"><a name="orOr"></a><u>orOr</u></span> immediately returns <span class="d_inlinecode"><b>true</b></span> without evaluating
-the remaining predicates.
+satisfied, <span class="d_inlinecode">meta.<a name="or"></a><u>or</u></span> immediately returns <span class="d_inlinecode"><b>true</b></span> without evaluating
+remaining predicates.
 
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>preds</td>
-<td valign=top>Zero or more predicate templates of the same arity.  This
-         argument may be empty; in that case, the resulting template
-         constantly evaluates to <span class="d_inlinecode"><b>false</b></span>.</td></tr>
+<td valign=top>Zero <a name="or"></a><u>or</u> more predicate templates to compose.  This argument can be
+         empty; in that case, the resulting template constantly evaluates to
+         <span class="d_inlinecode"><b>false</b></span>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Variadic predicate template that determines if its arguments satisfy
- at least one of the predicates <span class="d_inlinecode">preds</span>.
+<b>Returns:</b><br>Composition predicate template that tests if its arguments satisfy at least
+ one of the predicates <span class="d_inlinecode">preds</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">template</span> isString(T)
-{
-    <span class="d_keyword">enum</span> isString = <span class="d_keyword">is</span>(T == string);
-}
-<span class="d_keyword">alias</span> meta.<span class="d_psymbol">orOr</span>!(<span class="d_string">"a == 0"</span>, isString) zeroOrInt;
-
-<span class="d_comment">// Since 0 satisfies the first predicate, zeroOrInt does not evaluate
-</span><span class="d_comment">// isString!(0) that will result in an error.
-</span><span class="d_keyword">static</span> <span class="d_keyword">assert</span>(zeroOrInt!0);
+<pre class="d_code"><span class="d_comment">// Note that bool doesn't have the .min property.
+</span><span class="d_keyword">alias</span> meta.filter!(meta.<span class="d_psymbol">or</span>!(<span class="d_string">q{ A.sizeof &lt; 4 }</span>, <span class="d_string">q{ A.min &lt; 0 }</span>),
+                   <span class="d_keyword">bool</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">int</span>, <span class="d_keyword">uint</span>) R;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(R == meta.Seq!(<span class="d_keyword">bool</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">int</span>)));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="compose"></a><u>compose</u>(templates...)</div></dt>
-<dd>.
+<dt><div class="d_decl">template <a name="compose"></a><u>compose</u>(templates...) if (templates.length &gt; 0)</div></dt>
+<dd><span class="d_inlinecode"><a name="compose"></a><u>compose</u>!(t1, t2, ..., tn)</span> returns a variadic template that in turn
+instantiates the passed in templates in a chaining way:
+<pre class="d_code"><span class="d_keyword">template</span> composition(args...)
+{
+    <span class="d_keyword">alias</span> t1!(t2!( ... tn!(args) ... )) composition;
+}
+</pre>
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>templates</td>
-<td valign=top>.</td></tr>
+<td valign=top>One or more templates making up the chain.  Each template
+             can be a template or a string; strings are transformed to
+             varadic templates using <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>New template that instantiates the chain of <span class="d_inlinecode">templates</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">compose</span>!(<span class="d_string">q{ A[] }</span>,
+                    <span class="d_string">q{ const A }</span>) ConstArray;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(ConstArray!<span class="d_keyword">int</span> == <span class="d_keyword">const</span>(<span class="d_keyword">int</span>)[]));
 </pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="guard"></a><u>guard</u>(templates...) if (templates.length &gt; 0)</div></dt>
+<dd>Generates a template that tries instantiating specified templates in turn
+and returns the result of the first compilable template.
+<p></p>
+For example, <span class="d_inlinecode">meta.<a name="guard"></a><u>guard</u>!(t1, t2)</span> generates a template that behaves
+as follows:
+<pre class="d_code"><span class="d_keyword">template</span> trial(args...)
+{
+    <span class="d_keyword">static</span> <span class="d_keyword">if</span> (<span class="d_keyword">__traits</span>(compiles, t1!(args)))
+    {
+        <span class="d_keyword">alias</span> t1!(args) trial;
+    }
+    <span class="d_keyword">else</span>
+    {
+        <span class="d_keyword">alias</span> t2!(args) trial;
+    }
+}
+</pre>
+
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>templates</td>
+<td valign=top>Templates to try instantiation.  Each template can be a real
+             template or a string that can be transformed to a template
+             using <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Variadic template that instantiates the first compilable template among
+ <span class="d_inlinecode">templates</span>.  The last template is not guarded; if all the templates
+ failed, the generated template will fail due to the last one.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">guard</span>!(<span class="d_string">q{ A.min &lt; 0 }</span>, <span class="d_string">q{ false }</span>) hasNegativeMin;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( hasNegativeMin!<span class="d_keyword">int</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">uint</span>);    <span class="d_comment">// uint.min is non-negative
+</span><span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">void</span>);    <span class="d_comment">// void.min is not defined
+</span></pre>
 <p></p>
 
 </dd>
@@ -612,7 +709,7 @@ Using <span class="d_inlinecode">meta.<a name="expand"></a><u>expand</u></span> 
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="iota"></a><u>iota</u>(alias beg,alias end,alias step) if (step != 0)<br>template <a name="iota"></a><u>iota</u>(alias beg,alias end)<br>template <a name="iota"></a><u>iota</u>(alias end)</div></dt>
+<dt><div class="d_decl">template <a name="iota"></a><u>iota</u>(alias beg,alias end,alias step) if (step &lt;&gt; 0)<br>template <a name="iota"></a><u>iota</u>(alias beg,alias end)<br>template <a name="iota"></a><u>iota</u>(alias end)</div></dt>
 <dd>Yields a sequence of numbers starting from <span class="d_inlinecode">beg</span> to <span class="d_inlinecode">end</span> with the
 specified <span class="d_inlinecode">step</span>.
 <p></p>
@@ -859,7 +956,7 @@ Filling a continuous region in a table with specific values.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="transverse"></a><u>transverse</u>(size_t i,seqs...) if (all!(andAnd!(isPacked,isLongerThan!(i)),seqs))</div></dt>
+<dt><div class="d_decl">template <a name="transverse"></a><u>transverse</u>(size_t i,seqs...) if (all!(and!(isPacked,isLongerThan!(i)),seqs))</div></dt>
 <dd>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>i</td>
@@ -957,7 +1054,7 @@ instead of the <span class="d_inlinecode">meta.pack</span>.
 
  Doubling elements by passing a template returning a sequence.
 <pre class="d_code"><span class="d_comment">// Twice = (int, int, bool, bool, string, string)
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">map</span>!(meta.bindFront!(meta.repeat, 2),
+</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">map</span>!(meta.bind!(meta.repeat, 2),
                 <span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, string) Twice;
 </pre>
 <p></p>
@@ -1149,7 +1246,7 @@ elements with a specified equality instead of the <span class="d_inlinecode">met
 </pre>
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Binary template.</td></tr>
+<td valign=top>Binary template or string.</td></tr>
 <tr><td valign=top>Seed</td>
 <td valign=top>The initial state.</td></tr>
 <tr><td valign=top>seq</td>
@@ -1168,19 +1265,25 @@ Computing the net accumulation of the size of types.
 </pre>
 
 <p></p>
-<b>See Also:</b><br><span class="d_inlinecode">scan</span>, a variant that also returns intermediate results.<p></p>
+<b>See Also:</b><br><span class="d_inlinecode">meta.scan</span>: <a name="reduce"></a><u>reduce</u> with history.<p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="scan"></a><u>scan</u>(alias fun,Seed,seq...)<br>template <a name="scan"></a><u>scan</u>(alias fun,alias Seed,seq...)</div></dt>
-<dd>Same as <span class="d_inlinecode">meta.reduce</span>, except this template returns the reduced
-result with history: intermediate results of <span class="d_inlinecode">fun</span>.
+<dd>Returns a sequence generated by successively applying a binary template
+<span class="d_inlinecode">fun</span> over the elements of <span class="d_inlinecode">seq</span>, with an initial state <span class="d_inlinecode">Seed</span>:
+<pre class="d_code"><span class="d_psymbol">scan</span>[0] = Seed;
+<span class="d_psymbol">scan</span>[1] = fun!(<span class="d_psymbol">scan</span>[0], seq[0]);
+<span class="d_psymbol">scan</span>[2] = fun!(<span class="d_psymbol">scan</span>[1], seq[1]);
+        :
+</pre>
+Note that <span class="d_inlinecode"><a name="scan"></a><u>scan</u>[i]</span> is equal to <span class="d_inlinecode">meta.reduce!(fun, Seed, seq[0 .. i])</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Binary template.</td></tr>
+<td valign=top>Binary template or string.</td></tr>
 <tr><td valign=top>Seed</td>
 <td valign=top>The initial state.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence of zero or more compile-time entities to reduce.</td></tr>
+<td valign=top>Sequence of zero or more compile-time entities to scan.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Sequence of the results of <span class="d_inlinecode">fun</span> preceded by <span class="d_inlinecode">Seed</span>.
 
@@ -1189,7 +1292,7 @@ result with history: intermediate results of <span class="d_inlinecode">fun</spa
 Computing the sum of the size of types with history.
 <pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, <span class="d_keyword">short</span>, <span class="d_keyword">bool</span>, <span class="d_keyword">dchar</span>) Types;
 
-<span class="d_keyword">alias</span> meta.<span class="d_psymbol">scan</span>!(<span class="d_string">q{ a + b.sizeof }</span>, 0, Types) sums;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">scan</span>!(<span class="d_string">q{ a + B.sizeof }</span>, 0, Types) sums;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>([ sums ] == [ 0,
                             0+4,
                             0+4+8,
@@ -1198,28 +1301,27 @@ Computing the sum of the size of types with history.
                             0+4+8+2+1+4 ]);
 </pre>
  Note that <span class="d_inlinecode">sums[5]</span>, or <span class="d_inlinecode">sums[Types.length]</span>, equals the result
- of the example of <span class="d_inlinecode">meta.reduce</span>.<p></p>
+ of the corresponding example of <span class="d_inlinecode">meta.reduce</span>.<p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="most"></a><u>most</u>(alias comp,seq...) if (seq.length &gt;= 1)<br>template <a name="most"></a><u>most</u>(string comp,seq...) if (seq.length &gt;= 1)</div></dt>
-<dd>Looks for the first "top" element in a sequence in terms of the
-comparison template <span class="d_inlinecode">comp</span>. This template is effectively the same
+<dt><div class="d_decl">template <a name="most"></a><u>most</u>(alias comp,seq...) if (seq.length &gt; 0)<br>template <a name="most"></a><u>most</u>(string comp,seq...) if (seq.length &gt; 0)</div></dt>
+<dd>Looks for the first "top" element of a sequence in terms of the specified
+comparison template <span class="d_inlinecode">comp</span>.  This template is effectively the same
 as <span class="d_inlinecode">meta.sort!(comp, seq)[0]</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>comp</td>
 <td valign=top>Binary template or expression string that compares items in
-        the sequence for ordering.</td></tr>
+        the sequence for an ordering.</td></tr>
 <tr><td valign=top>seq</td>
 <td valign=top>One or more compile-time entities.</td></tr>
 </table><p></p>
 <b>Example:</b><br>
-In the following example the <span class="d_inlinecode">comp</span> argument works as the
- greater-than operator, thus <span class="d_inlinecode">meta.<a name="most"></a><u>most</u></span> returns the largest element
- in the sequence.
+To get the largest element in the sequence, specify a greater-than operator
+ as the <span class="d_inlinecode">comp</span> argument.
 <pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, <span class="d_keyword">double</span>, <span class="d_keyword">short</span>) Types;
 
 <span class="d_comment">// Take the largest type in the sequence: double.
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">most</span>!(<span class="d_string">q{ a.sizeof &gt; b.sizeof }</span>, Types) Largest;
+</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">most</span>!(<span class="d_string">q{ A.sizeof &gt; B.sizeof }</span>, Types) Largest;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Largest == <span class="d_keyword">double</span>));
 </pre>
 <p></p>
@@ -1389,9 +1491,8 @@ elements.
 
 <p></p>
 <b>Example:</b><br>
-These templates would be very useful in template constraints:
-<pre class="d_code"><span class="d_keyword">import</span> std.meta;
-<span class="d_keyword">import</span> std.range;
+These templates would be useful in template constraints:
+<pre class="d_code"><span class="d_keyword">import</span> std.meta, std.range, std.typecons;
 
 <span class="d_comment">// This function requires all arguments should be input ranges.
 </span><span class="d_keyword">auto</span> dropFront(Ranges...)(<span class="d_keyword">ref</span> Ranges ranges)
@@ -1406,6 +1507,36 @@ These templates would be very useful in template constraints:
     }
     <span class="d_keyword">return</span> result;
 }
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="only"></a><u>only</u>(alias pred,seq...)</div></dt>
+<dd>Determines if only one of the elements of <span class="d_inlinecode">seq</span> satisfies the predicate
+<span class="d_inlinecode">pred</span>.  The predicate is tested for all the elements.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
+<td valign=top>Unary predicate template or expression string.</td></tr>
+<tr><td valign=top>seq</td>
+<td valign=top>Zero or more compile-time entities to examine.</td></tr>
+</table><p></p>
+<b>Returns:</b><br><span class="d_inlinecode"><b>true</b></span> if <span class="d_inlinecode">seq</span> is not empty and only one of the elements satisfies
+ the predicate.  Otherwise, <span class="d_inlinecode"><b>false</b></span> is returned.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_comment">// Allow only one class in a base class list.
+</span><span class="d_keyword">template</span> isValidBase(Bases...)
+{
+    <span class="d_keyword">enum</span> isValidBase = meta.<span class="d_psymbol">only</span>!(<span class="d_string">q{ is(A == class) }</span>, Bases);
+}
+
+<span class="d_keyword">class</span> B {}
+<span class="d_keyword">class</span> C {}
+<span class="d_keyword">interface</span> I {}
+<span class="d_keyword">interface</span> J {}
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isValidBase!(B, I, J));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isValidBase!(B, I, C));
 </pre>
 <p></p>
 
