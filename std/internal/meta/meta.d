@@ -3648,38 +3648,35 @@ unittest    // doc example
 
 
 /**
-Looks for the first "top" element in a sequence in terms of the
-comparison template $(D comp). This template is effectively the same
+Looks for the first "top" element of a sequence in terms of the specified
+comparison template $(D comp).  This template is effectively the same
 as $(D meta.sort!(comp, seq)[0]).
 
 Params:
  comp = Binary template or expression string that compares items in
-        the sequence for ordering.
+        the sequence for an ordering.
   seq = One or more compile-time entities.
 
 Example:
- In the following example the $(D comp) argument works as the
- greater-than operator, thus $(D meta.most) returns the largest element
- in the sequence.
+ To get the largest element in the sequence, specify a greater-than operator
+ as the $(D comp) argument.
 --------------------
 alias meta.Seq!(int, bool, double, short) Types;
 
 // Take the largest type in the sequence: double.
-alias meta.most!(q{ a.sizeof > b.sizeof }, Types) Largest;
+alias meta.most!(q{ A.sizeof > B.sizeof }, Types) Largest;
 static assert(is(Largest == double));
 --------------------
  */
-template most(alias comp, seq...)
-    if (seq.length >= 1)
+template most(alias comp, seq...) if (seq.length > 0)
 {
     alias reduce!(_more!comp, seq) most;
 }
 
 /// ditto
-template most(string comp, seq...)
-    if (seq.length >= 1)
+template most(string comp, seq...) if (seq.length > 0)
 {
-    alias most!(binaryT!comp, seq) most;
+    alias reduce!(_more!(binaryT!comp), seq) most;
 }
 
 
@@ -3702,6 +3699,23 @@ private template _more(alias comp)
 
 unittest
 {
+    static assert(most!(q{ a < b }, 5) == 5);
+    static assert(most!(q{ a < b }, 5, 5, 5) == 5);
+    static assert(most!(q{ a < b }, 5, 1, -3, 2, 4) == -3);
+
+    // stability
+    alias most!(q{ A.sizeof < B.sizeof }, short, byte, float, ubyte, uint) Min;
+    alias most!(q{ A.sizeof > B.sizeof }, short, byte, float, ubyte, uint) Max;
+    static assert(is(Min ==  byte));
+    static assert(is(Max == float));
+}
+
+unittest    // doc example
+{
+    alias meta.Seq!(int, bool, double, short) Types;
+
+    alias meta.most!(q{ A.sizeof > B.sizeof }, Types) Largest;
+    static assert(is(Largest == double));
 }
 
 
