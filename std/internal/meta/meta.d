@@ -764,20 +764,20 @@ Returns:
 
 Examples:
 --------------------
-alias meta.unaryT!"const A" Constify;
+alias meta.unaryT!q{ const A } Constify;
 static assert(is(Constify!int == const int));
 
-alias meta.unaryT!"a.length" lengthof;
+alias meta.unaryT!q{ a.length } lengthof;
 static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
 --------------------
 
- In the next example, the generated template returns a sequence.
+ The generated template can return a sequence.
 --------------------
 import std.meta;
 import std.typecons;
 
 // Extracts the Types property of a Tuple instance.
-alias meta.unaryT!"A.Types" expand;
+alias meta.unaryT!q{ A.Types } expand;
 
 alias expand!(Tuple!(int, double, string)) Types;
 static assert(is(Types[0] == int));
@@ -815,8 +815,8 @@ private template unaryTGen(string expr)
 
 unittest
 {
-    alias unaryT!"a + 1" increment;
-    alias unaryT!"A*" Pointify;
+    alias unaryT!q{ a + 1 } increment;
+    alias unaryT!q{ A* } Pointify;
     static assert(increment!10 == 11);
     static assert(is(Pointify!int == int*));
 }
@@ -827,25 +827,25 @@ unittest    // Test for sequence return
     {
         alias T Types;
     }
-    alias unaryT!"A.Types" Expand;
+    alias unaryT!q{ A.Types } Expand;
     alias Expand!(Tup!(int, double, string)) IDS;
     static assert(is(IDS == Seq!(int, double, string)));
 
     // 1-sequence
-    alias unaryT!"Seq!(a)" oneseq;
+    alias unaryT!q{ Seq!(a) } oneseq;
     static assert(oneseq!int.length == 1);
 
     // arrays are not sequences
-    alias unaryT!"a[0 .. 2]" slice;
+    alias unaryT!q{ a[0 .. 2] } slice;
     static assert(slice!([1,2,3]) == [1,2]);
 }
 
 unittest    // doc examples
 {
-    alias meta.unaryT!"const A" Constify;
+    alias meta.unaryT!q{ const A } Constify;
     static assert(is(Constify!int == const int));
 
-    alias meta.unaryT!"a.length" lengthof;
+    alias meta.unaryT!q{ a.length } lengthof;
     static assert(lengthof!([ 1,2,3,4,5 ]) == 5);
 }
 
@@ -909,10 +909,10 @@ private template binaryTGen(string expr)
 
 unittest
 {
-    alias binaryT!"B[A]" Assoc;
-    alias binaryT!"A[b]" ArrayA;
-    alias binaryT!"B[a]" ArrayB;
-    alias binaryT!"a / b" div;
+    alias binaryT!q{ B[A] } Assoc;
+    alias binaryT!q{ A[b] } ArrayA;
+    alias binaryT!q{ B[a] } ArrayB;
+    alias binaryT!q{ a / b } div;
     static assert(is(Assoc!(string, int) == int[string]));
     static assert(is(ArrayA!(int, 10) == int[10]));
     static assert(is(ArrayB!(10, int) == int[10]));
@@ -921,13 +921,13 @@ unittest
 
 unittest    // Test for sequence return
 {
-    alias binaryT!"Seq!(a, b, 3)" ab3;
+    alias binaryT!q{ Seq!(a, b, 3) } ab3;
     static assert([ ab3!(10, 20) ] == [ 10, 20, 3 ]);
 }
 
 unittest    // doc example
 {
-    alias meta.binaryT!"a + B.sizeof" accumSize;
+    alias meta.binaryT!q{ a + B.sizeof } accumSize;
     enum n1 = accumSize!( 0,    int);
     enum n2 = accumSize!(n1, double);
     enum n3 = accumSize!(n2,  short);
@@ -1014,37 +1014,37 @@ private template variadicTGen(string expr)
 
 unittest
 {
-    alias variadicT!"a + b*c" addMul;
+    alias variadicT!q{ a + b*c } addMul;
     static assert(addMul!(2,  3,  5) == 2 +  3* 5);
     static assert(addMul!(7, 11, 13) == 7 + 11*13);
 
-    alias variadicT!"[ g, e, c, a, b, d, f, h ]" shuffle;
+    alias variadicT!q{ [ g, e, c, a, b, d, f, h ] } shuffle;
     static assert(shuffle!(1,2,3,4,5,6,7,8) == [ 7,5,3,1,2,4,6,8 ]);
 
     // Using uppercase parameters
-    alias variadicT!"const(B)[A]" MakeConstAA;
+    alias variadicT!q{ const(B)[A] } MakeConstAA;
     static assert(is(MakeConstAA!(int, double) == const(double)[int]));
     static assert(is(MakeConstAA!(int, string) == const(string)[int]));
 
-    alias variadicT!"pack!(G, E, C, A, B, D, F, H)" Shuffle;
+    alias variadicT!q{ pack!(G, E, C, A, B, D, F, H) } Shuffle;
     static assert(is(Shuffle!(int, double, string, bool,
                               dchar, void*, short, byte)
                      == pack!(short, dchar, string, int,
                               double, bool, void*, byte)));
 
     // Mixing multicase parameters
-    alias variadicT!"A[b][c]" Make2D;
+    alias variadicT!q{ A[b][c] } Make2D;
     static assert(is(Make2D!(   int, 10, 20) ==    int[10][20]));
     static assert(is(Make2D!(double, 30, 10) == double[30][10]));
 
     // args
-    alias variadicT!"+args.length" lengthof;
+    alias variadicT!q{ +args.length } lengthof;
     static assert(lengthof!(1,2,3,4,5,6,7,8,9) == 9);
 }
 
 unittest    // Test for sequence return
 {
-    alias variadicT!"args[0 .. $/2]" halve;
+    alias variadicT!q{ args[0 .. $/2] } halve;
     static assert([ halve!(1,2,3,4) ] == [ 1,2 ]);
 }
 
@@ -1316,9 +1316,9 @@ template bind(alias templat, args...)
 
 unittest
 {
-    alias bind!("A[B]") Assoc;
-    alias bind!("A[B]", short) ShortAssoc;
-    alias bind!("A[B]", int, double) IntDouble;
+    alias bind!(q{ A[B] }) Assoc;
+    alias bind!(q{ A[B] }, short) ShortAssoc;
+    alias bind!(q{ A[B] }, int, double) IntDouble;
     static assert(is(Assoc!(uint, void*) == uint[void*]));
     static assert(is(ShortAssoc!string == short[string]));
     static assert(is(IntDouble!() == int[double]));
@@ -1379,9 +1379,9 @@ template rbind(alias templat, args...)
 
 unittest
 {
-    alias rbind!("A[B]") Assoc;
-    alias rbind!("A[B]", short) AssocShort;
-    alias rbind!("A[B]", int, double) IntDouble;
+    alias rbind!(q{ A[B] }) Assoc;
+    alias rbind!(q{ A[B] }, short) AssocShort;
+    alias rbind!(q{ A[B] }, int, double) IntDouble;
     static assert(is(Assoc!(uint, void*) == uint[void*]));
     static assert(is(AssocShort!string == string[short]));
     static assert(is(IntDouble!() == int[double]));
@@ -1801,7 +1801,7 @@ unittest
 
     // No actual composition
     alias compose!Const Const1;
-    alias compose!"a * 7" mul1;
+    alias compose!q{ a * 7 } mul1;
     static assert(is(Const1!int == const int));
     static assert(mul1!11 == 77);
 
@@ -1809,15 +1809,15 @@ unittest
     alias compose!(Array, Const) ArrayConst;
     static assert(is(ArrayConst!int == const(int)[]));
 
-    alias compose!(Seq, "a / b") SeqDiv;
+    alias compose!(Seq, q{ a / b }) SeqDiv;
     static assert(SeqDiv!(77, 11).length == 1);
     static assert(SeqDiv!(77, 11)[0] == 7);
 
-    alias compose!("[ args ]", reverse) arrayRev;
+    alias compose!(q{ [ args ] }, reverse) arrayRev;
 //  static assert(arrayRev!(1,2,3) == [ 3,2,1 ]);   // @@@BUG3276@@@
 
     // More compositions
-    alias compose!("a * 11", "a + 7", "-a") mul11add7neg;
+    alias compose!(q{ a * 11 }, q{ a + 7 }, q{ -a }) mul11add7neg;
     static assert(mul11add7neg!(-6) == (6 + 7) * 11);
 }
 
