@@ -2442,44 +2442,11 @@ unittest
 
 
 /* undocumented (for internal use) */
-template insertAt(size_t i, E, seq...)
-{
-    alias Seq!(seq[0 .. i], E, seq[i .. $]) insertAt;
-}
-
-// ditto
-template insertAt(size_t i, alias E, seq...)
-{
-    alias Seq!(seq[0 .. i], E, seq[i .. $]) insertAt;
-}
-
-
-unittest
-{
-    static assert([ insertAt!(0, 0, 1,2,3,4) ] == [ 0,1,2,3,4 ]);
-    static assert([ insertAt!(2, 0, 1,2,3,4) ] == [ 1,2,0,3,4 ]);
-    static assert([ insertAt!(4, 0, 1,2,3,4) ] == [ 1,2,3,4,0 ]);
-
-    alias insertAt!(0, int, 1,2,3,4) T0;
-    alias insertAt!(2, int, 1,2,3,4) T2;
-    alias insertAt!(4, int, 1,2,3,4) T4;
-    static assert(is( Tag!T0 == Tag!(int,1,2,3,4) ));
-    static assert(is( Tag!T2 == Tag!(1,2,int,3,4) ));
-    static assert(is( Tag!T4 == Tag!(1,2,3,4,int) ));
-
-    static assert(is( Tag!(insertAt!(0,   0)) == Tag!0   ));
-    static assert(is( Tag!(insertAt!(0, int)) == Tag!int ));
-}
-
-
-
-/* undocumented (for internal use) */
 template replaceAt(size_t i, E, seq...)
 {
     alias Seq!(seq[0 .. i], E, seq[i + 1 .. $]) replaceAt;
 }
 
-// ditto
 template replaceAt(size_t i, alias E, seq...)
 {
     alias Seq!(seq[0 .. i], E, seq[i + 1 .. $]) replaceAt;
