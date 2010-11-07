@@ -2099,41 +2099,62 @@ specified $(D step).
 
 Params:
   beg = Compile-time numeral value ($(D 0) if not specified).  The generated
-        sequence starts with $(D beg).
+        sequence starts with $(D beg) if not empty.
 
   end = Compile-time numeral value.  The resulting sequence stops before
         $(D end) and never contain this value.
 
  step = Compile-time numeral value ($(D 1) if not specified).  The generated
         sequence increases or decreases by $(D step).  This value may not
-        be zero.
+        be zero or NaN.
 
 Returns:
  Sequence of compile-time numbers starting from $(D beg) to $(D end),
- increasing/decreasing by $(D step).
+ increasing/decreasing by $(D step).  The generated sequence is empty if
+ $(D beg) is ahead of $(D end) in terms of the $(D step)'s direction.
 
 Examples:
- Using $(D meta.iota) to fill array elements:
---------------------
-static immutable int[] sequence = [ meta.iota!(9, 99, 9) ];
-static assert(sequence == [ 9, 18, 27, 36, 45, 54, 63, 72, 81, 90 ]);
---------------------
-
- Next example shows a static foreach.  The variable $(D i) in the
- following code holds a compile-time value.
---------------------
-// Declare arrays of int[4], int[5], int[6] and int[7].
-foreach (i; meta.iota!(4, 8))
+ So-called static foreach:
+----------
+void shift(Args...)(ref Args args)
 {
-    int[i] array;
+    // Each 'i' is a compile-time value, so it can be used to index
+    // into the variadic parameters.
+    foreach (i; meta.iota!(1, +args.length))
+    {
+        args[i - 1] = args[i];
+    }
+    args[$ - 1] = args[$ - 1].init;
 }
---------------------
+
+double a;
+int    b = 10;
+ushort c = 20;
+
+shift(a, b, c);
+assert(a == 10);
+assert(b == 20);
+assert(c ==  0);
+----------
+
+ Filling array elements using $(D meta.iota):
+----------
+static Base64Chars = cast(immutable char[64])
+    [
+        meta.iota!('A', 'Z'+1),
+        meta.iota!('a', 'z'+1),
+        meta.iota!('0', '9'+1), '+', '/'
+    ];
+static assert(Base64Chars[16] == 'Q');
+static assert(Base64Chars[32] == 'g');
+static assert(Base64Chars[62] == '+');
+----------
  */
 template iota(alias beg, alias end, alias step) if (step <> 0)
 {
     static if ((end - beg) / step >= 0)
     {
-        alias _iota!step.iota!(beg, end) iota;
+        alias _iota!(beg, step).upto!end iota;
     }
     else
     {
@@ -2144,7 +2165,7 @@ template iota(alias beg, alias end, alias step) if (step <> 0)
 /// ditto
 template iota(alias beg, alias end)
 {
-    alias iota!(beg, end, cast(typeof(true ? beg : end)) +1) iota;
+    alias iota!(beg, end, cast(typeof(beg)) 1) iota;
 }
 
 /// ditto
@@ -2154,21 +2175,71 @@ template iota(alias end)
 }
 
 
-private template _iota(alias step)
+unittest    // doc example (static foreach)
 {
-    enum ord = (step > 0 ? "<" : ">");
-
-    template iota(alias beg, alias end)
+    void shift(Args...)(ref Args args)
     {
-        alias iterateWhile!(before!end, increment, beg) iota;
+        foreach (i; meta.iota!(1, +args.length))    // @@@BUG4886@@@
+        {
+            args[i - 1] = args[i];
+        }
+        args[$ - 1] = args[$ - 1].init;
     }
 
-    template before(alias end)
+    double a;
+    int    b = 10;
+    ushort c = 20;
+
+    shift(a, b, c);
+    assert(a == 10);
+    assert(b == 20);
+    assert(c ==  0);
+}
+
+unittest    // doc example (array filling)
+{
+    static Base64Chars = cast(immutable char[64])
+        [
+            meta.iota!('A', 'Z'+1),
+            meta.iota!('a', 'z'+1),
+            meta.iota!('0', '9'+1), '+', '/'
+        ];
+    static assert(Base64Chars[16] == 'Q');
+    static assert(Base64Chars[32] == 'g');
+    static assert(Base64Chars[62] == '+');
+}
+
+
+
+private // iota for integral numbers
+{
+    template _isIntegralIota(alias beg, alias step)
     {
-        template before(alias cur) { enum before = mixin("cur"~ ord ~"end"); }
+        enum _isIntegralIota = is(typeof( beg) : long) &&
+                               is(typeof(step) : long);
     }
 
-    template increment(alias cur) { enum increment = cur + step; }
+    template _iota(alias beg, alias step) if (_isIntegralIota!(beg, step))
+    {
+        template upto(alias end)
+        {
+            alias iterate!(count!end, increment, beg) upto;
+        }
+
+     private:
+
+        alias typeof(true ? beg : step) T;
+
+        template count(alias end)
+        {
+            static if (step > 0)
+                enum count = cast(size_t) ((end - beg + step - 1) / step);
+            else
+                enum count = cast(size_t) ((end - beg + step + 1) / step);
+        }
+
+        template increment(alias cur) { enum T increment = cur + step; }
+    }
 }
 
 
@@ -2192,6 +2263,67 @@ unittest
     static assert([ iota!(3, 5, -1) ] == []);
     static assert([ iota!(5, 3, +1) ] == []);
     static assert([ iota!(3, 3, -1) ] == []);
+}
+
+
+
+private // iota for floating-point numbers
+{
+    template _isFloatingIota(alias beg, alias step)
+    {
+        enum _isFloatingIota = !_isIntegralIota!(beg, step) &&
+                               (is(typeof( beg) : real) ||
+                                is(typeof(step) : real));
+    }
+
+    template _iota(alias beg, alias step) if (_isFloatingIota!(beg, step))
+    {
+        template upto(alias end)
+        {
+            alias map!(transform, _iota!(0, 1).upto!(count!end)) upto;
+        }
+
+     private:
+
+        alias typeof(true ? beg : step) T;
+
+        template count(alias end)
+        {
+            // Dumb 'ceil' function.
+            static if ((step > 0 && transform!(basicCount!end) >= end) ||
+                       (step < 0 && transform!(basicCount!end) <= end))
+                enum count = basicCount!end;
+            else
+                enum count = basicCount!end + 1;
+        }
+
+        template basicCount(alias end)
+        {
+            enum basicCount = cast(size_t) ((end - beg) / step);
+        }
+
+        template transform(alias cur) { enum T transform = beg + cur*step; }
+    }
+}
+
+
+unittest
+{
+    static assert([ iota!(0.0) ] == []);
+    static assert([ iota!(0.5) ] == [ 0.0 ]);
+    static assert([ iota!(1.0) ] == [ 0.0 ]);
+    static assert([ iota!(3.5) ] == [ 0.0, 1.0, 2.0, 3.0 ]);
+    static assert([ iota!(-0.1) ] == []);
+    static assert([ iota!(-5.5) ] == []);
+
+    static assert([ iota!(-1.5,  4) ] == [ -1.5, -0.5, 0.5, 1.5, 2.5, 3.5 ]);
+    static assert([ iota!( 5.0,  3) ] == []);
+    static assert([ iota!(-0.9, -1) ] == []);
+
+    static assert([ iota!(1.0, 3.1, 0.5) ] == [ 1.0, 1.5, 2.0, 2.5, 3.0 ]);
+    static assert([ iota!(1.0, 1.5,  10) ] == [ 1.0 ]);
+    static assert([ iota!(2.0, 1.5, -10) ] == [ 2.0 ]);
+    static assert([ iota!(2.0,  10,  -1) ] == []);
 }
 
 
@@ -2235,21 +2367,6 @@ unittest    // doc example
 {
     alias meta.iterate!(4, q{ A* }, int) Pointers;
     static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
-}
-
-
-
-/* undocumented */
-template iterateWhile(alias pred, alias fun, Seed...)
-{
-    static if (!pred!Seed)
-    {
-        alias Seq!() iterateWhile;
-    }
-    else
-    {
-        alias Seq!(Seed, iterateWhile!(pred, fun, fun!Seed)) iterateWhile;
-    }
 }
 
 
