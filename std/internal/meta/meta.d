@@ -2098,23 +2098,22 @@ Yields a sequence of numbers starting from $(D beg) to $(D end) with the
 specified $(D step).
 
 Params:
-  beg = Compile-time numeral value ($(D 0) if not specified).  The
-        resulting sequence starts with $(D beg) if not empty.
+  beg = Compile-time numeral value ($(D 0) if not specified).  The generated
+        sequence starts with $(D beg).
 
   end = Compile-time numeral value.  The resulting sequence stops before
-        $(D end) and never contain it.
+        $(D end) and never contain this value.
 
- step = Compile-time numeral value ($(D 1) if not specified).  The
-        resulting sequence increases or decreases by $(D step).  The
-        _step may not be zero.
+ step = Compile-time numeral value ($(D 1) if not specified).  The generated
+        sequence increases or decreases by $(D step).  This value may not
+        be zero.
 
 Returns:
  Sequence of compile-time numbers starting from $(D beg) to $(D end),
- increasing/decreasing by $(D step).  The type of each element is the
- common type of $(D beg) and $(D end).
+ increasing/decreasing by $(D step).
 
 Examples:
- Using $(D meta.iota) to fill a constant array:
+ Using $(D meta.iota) to fill array elements:
 --------------------
 static immutable int[] sequence = [ meta.iota!(9, 99, 9) ];
 static assert(sequence == [ 9, 18, 27, 36, 45, 54, 63, 72, 81, 90 ]);
@@ -2132,25 +2131,67 @@ foreach (i; meta.iota!(4, 8))
  */
 template iota(alias beg, alias end, alias step) if (step <> 0)
 {
-    // TODO
+    static if ((end - beg) / step >= 0)
+    {
+        alias _iota!step.iota!(beg, end) iota;
+    }
+    else
+    {
+        alias Seq!() iota;
+    }
 }
 
 /// ditto
 template iota(alias beg, alias end)
 {
-    // TODO
+    alias iota!(beg, end, cast(typeof(true ? beg : end)) +1) iota;
 }
 
 /// ditto
 template iota(alias end)
 {
-    // TODO
+    alias iota!(cast(typeof(end)) 0, end) iota;
 }
 
+
+private template _iota(alias step)
+{
+    enum ord = (step > 0 ? "<" : ">");
+
+    template iota(alias beg, alias end)
+    {
+        alias iterateWhile!(before!end, increment, beg) iota;
+    }
+
+    template before(alias end)
+    {
+        template before(alias cur) { enum before = mixin("cur"~ ord ~"end"); }
+    }
+
+    template increment(alias cur) { enum increment = cur + step; }
+}
 
 
 unittest
 {
+    static assert([ iota!0 ] == []);
+    static assert([ iota!1 ] == [ 0 ]);
+    static assert([ iota!2 ] == [ 0,1 ]);
+    static assert([ iota!3 ] == [ 0,1,2 ]);
+    static assert([ iota!(-1) ] == []);
+    static assert([ iota!(-2) ] == []);
+
+    static assert([ iota!(-5,  5) ] == [ -5,-4,-3,-2,-1,0,1,2,3,4 ]);
+    static assert([ iota!( 5, -5) ] == []);
+    static assert([ iota!(-5, -5) ] == []);
+
+    static assert([ iota!( 3,  20, +4) ] == [  3, 7, 11, 15, 19 ]);
+    static assert([ iota!(-3, -20, -4) ] == [ -3,-7,-11,-15,-19 ]);
+    static assert([ iota!(1, 5, +9) ] == [ 1 ]);
+    static assert([ iota!(5, 1, -9) ] == [ 5 ]);
+    static assert([ iota!(3, 5, -1) ] == []);
+    static assert([ iota!(5, 3, +1) ] == []);
+    static assert([ iota!(3, 3, -1) ] == []);
 }
 
 
@@ -2161,30 +2202,54 @@ TODO
 Params:
     n = .
   fun = .
- seed = .
+ Seed = .
 
 Returns:
  .
 
 Example:
 --------------------
-// Pointers = (int, int*, int**, int***)
 alias meta.iterate!(4, q{ A* }, int) Pointers;
+static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
 --------------------
  */
-template iterate(size_t n, alias fun, seed...)
+template iterate(size_t n, alias fun, Seed...)
 {
-}
-
-// Deal with expression strings.
-template iterate(size_t n, string fun, seed...)
-{
-    alias iterate!(n, unaryT!fun, seed) iterate;
+    static if (n < 2)
+    {
+        alias Seed[0 .. n * $] iterate;
+    }
+    else
+    {
+        alias Seq!(Seed, iterate!(n - 1, fun, apply!(fun, Seed))) iterate;
+    }
 }
 
 
 unittest
 {
+    static assert([ meta.iterate!(8, q{ a + 1 }, 1) ] == [ 1,2,3,4,5,6,7,8 ]);
+}
+
+unittest    // doc example
+{
+    alias meta.iterate!(4, q{ A* }, int) Pointers;
+    static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
+}
+
+
+
+/* undocumented */
+template iterateWhile(alias pred, alias fun, Seed...)
+{
+    static if (!pred!Seed)
+    {
+        alias Seq!() iterateWhile;
+    }
+    else
+    {
+        alias Seq!(Seed, iterateWhile!(pred, fun, fun!Seed)) iterateWhile;
+    }
 }
 
 
