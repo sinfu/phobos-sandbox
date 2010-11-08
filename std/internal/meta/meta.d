@@ -435,18 +435,17 @@ unittest    // doc example
 
 
 /**
-Returns $(D true) if and only if a compile-time entity $(D E) is a type.
+Returns $(D true) if and only if $(D E) is a type.
 
 Example:
---------------------
+----------
 alias meta.Seq!(int, "x",
-             double, "y",
-             string, "z") mixed;
+                double, "y",
+                string, "z") Mixed;
 
-// Filter out the types.
-alias meta.filter!(meta.isType, mixed) Types;
+alias meta.filter!(meta.isType, Mixed) Types;
 static assert(is(Types == meta.Seq!(int, double, string)));
---------------------
+----------
  */
 template isType(E)
 {
@@ -463,20 +462,28 @@ template isType(alias E)
 unittest
 {
     // Basic & qualified types.
-    static assert(isType!(          int));
-    static assert(isType!(const     int));
-    static assert(isType!(shared    int));
+    static assert(isType!(int));
+    static assert(isType!(const int));
+    static assert(isType!(shared int));
     static assert(isType!(immutable int));
 
     // User-defined types.
     enum   Enum   { a }
     struct Struct {}
-    union  Union  {}
     class  Class  {}
-    static assert(isType!Enum  );
+    static assert(isType!Enum);
     static assert(isType!Struct);
-    static assert(isType!Union );
-    static assert(isType!Class );
+    static assert(isType!Class);
+}
+
+unittest    // doc example
+{
+    alias meta.Seq!(int, "x",
+                    double, "y",
+                    string, "z") Mixed;
+
+    alias meta.filter!(meta.isType, Mixed) Types;
+    static assert(is(Types == meta.Seq!(int, double, string)));
 }
 
 
