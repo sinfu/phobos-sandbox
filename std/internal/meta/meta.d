@@ -573,20 +573,20 @@ unittest
 
 
 /* undocumented */
-template pseudoLess(entities...)
+template metaComp(entities...) if (entities.length == 2)
 {
-    enum pseudoLess = tag!(entities[0]) < tag!(entities[1]);
+    enum metaComp = tag!(entities[0]) < tag!(entities[1]);
 }
 
 
 unittest
 {
-    static assert(pseudoLess!(10, 20));
-    static assert(pseudoLess!(10, -5)); // Yes
-    static assert(pseudoLess!(int, 5));
+    static assert(metaComp!(10, 20));
+    static assert(metaComp!(10, -5)); // Yes
+    static assert(metaComp!(int, 5));
 
-    alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
-    alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
+    alias sortBy!(metaComp,    int, "x", 10, double, "y", 20) s1;
+    alias sortBy!(metaComp, double, "y", 20,    int, "x", 10) s2;
     static assert(tag!s1 == tag!(double, int, 10, 20, "x", "y"));
     static assert(tag!s2 == tag!(double, int, 10, 20, "x", "y"));
 }
@@ -4314,7 +4314,7 @@ template minLength(seqs...)
 
 version (unittest) template _set(seq...)
 {
-    alias tag!(sortBy!(pseudoLess, seq)) _set;
+    alias tag!(sortBy!(metaComp, seq)) _set;
 }
 
 
@@ -4324,7 +4324,7 @@ version (unittest) template _set(seq...)
  */
 template setIntersection(alias A, alias B)
 {
-    alias setIntersectionBy!(pseudoLess, A, B) setIntersection;
+    alias setIntersectionBy!(metaComp, A, B) setIntersection;
 }
 
 
@@ -4416,7 +4416,7 @@ private template _SetIntersection(alias comp)
  */
 template setUnion(alias A, alias B)
 {
-    alias setUnionBy!(pseudoLess, A, B) setUnion;
+    alias setUnionBy!(metaComp, A, B) setUnion;
 }
 
 
@@ -4506,7 +4506,7 @@ private template _SetUnion(alias comp)
  */
 template setDifference(alias A, alias B)
 {
-    alias setDifferenceBy!(pseudoLess, A, B) setDifference;
+    alias setDifferenceBy!(metaComp, A, B) setDifference;
 }
 
 
@@ -4598,7 +4598,7 @@ private template _SetDifference(alias comp)
  */
 template setSymmetricDifference(alias A, alias B)
 {
-    alias setSymmetricDifferenceBy!(pseudoLess, A, B) setSymmetricDifference;
+    alias setSymmetricDifferenceBy!(metaComp, A, B) setSymmetricDifference;
 }
 
 
