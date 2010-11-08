@@ -488,6 +488,90 @@ unittest    // doc example
 
 
 
+/**
+Returns $(D true) if and only if $(D E) has a compile-time value.  Literals,
+constants and CTFE-able property functions would pass the test.
+
+Example:
+----------
+template increment(alias value) if (isValue!value)
+{
+    enum increment = value + 1;
+}
+enum a = increment!10;
+enum b = increment!increment;   // Error: negates the constraint
+----------
+ */
+template isValue(E)
+{
+    enum isValue = false;
+}
+
+/// ditto
+template isValue(alias E)
+{
+    static if (is(typeof(E) T) && !is(T == void))
+    {
+        enum isValue = __traits(compiles, Id!([ E ]));
+    }
+    else
+    {
+        enum isValue = false;
+    }
+}
+
+
+unittest
+{
+    static struct S
+    {
+        int member;
+
+      @property:
+        static int fun() { return 10; }
+               int gun() { return 10; }
+        static int hun();
+    }
+
+    // Literal values
+    static assert(isValue!100);
+    static assert(isValue!"abc");
+    static assert(isValue!([ 1,2,3,4 ]));
+    static assert(isValue!(S(32)));
+
+    // Constants
+    static immutable staticConst = "immutable";
+    enum manifestConst = 123;
+    static assert(isValue!staticConst);
+    static assert(isValue!manifestConst);
+
+    // CTFE
+    static assert( isValue!(S.fun));
+    static assert(!isValue!(S.gun));
+    static assert(!isValue!(S.hun));
+
+    // Non-values
+    static assert(!isValue!int);
+    static assert(!isValue!S);
+    static assert(!isValue!isValue);
+}
+
+unittest
+{
+    struct Scope
+    {
+        template increment(alias value) if (isValue!value)
+        {
+            enum increment = value + 1;
+        }
+    }
+    alias Scope.increment increment;
+    static assert( __traits(compiles, increment!10));
+    static assert(!__traits(compiles, increment!increment));
+}
+
+
+
 /* undocumented */
 template pseudoLess(entities...)
 {
