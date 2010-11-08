@@ -137,162 +137,87 @@ unittest
 
 
 /**
-$(D meta.pack!(seq)) packs the sequence $(D seq) into a single
-compile-time entity.
+$(D meta.pack) makes an atomic entity from a sequence, which is useful for
+passing multiple sequences to a template.
 
 Params:
- seq = Zero or more compile-time entities to pack.
+ seq = Zero or more compile-time entities to _pack.
 
-Returns:
- A compile-time entity that packs $(D seq) inside itself.
-
- The result can be $(D alias)ed.  Sequences of packed entities can
- be iterated with the $(D foreach) statement.
---------------------
-// Iterate through sequence of sequences of compile-time values.
-alias meta.pack!(1, 2, 3) A;
-alias meta.pack!(4, 5, 6) B;
-alias meta.pack!(7, 8, 9) C;
-
-foreach (i, pak; meta.Seq!(A, B, C))
-{
-    int[] seq = [ pak.expand ];
-}
---------------------
-
-BUGS:
- Too much instantiations of $(D meta.pack) would hit $(BUGZILLA 3372)
- and cause programs go mad on Windows.  The threshold depends on the
- program, but a few thousand instantiations might be dangerous.
+Example:
+ The following code passes three separate sequences to $(D meta.transverse)
+ using $(D meta.pack):
+----------
+// Query the 0-th element of each sequence.
+alias meta.transverse!(0, meta.pack!(int, 32),
+                          meta.pack!(double, 5.0),
+                          meta.pack!(string, "hello.")) first;
+static assert(is(first[0] == int));
+static assert(is(first[1] == double));
+static assert(is(first[2] == string));
+----------
  */
-struct Packer(seq...)
+template pack(seq...)
 {
     /**
-     * Expands the packed sequence.
+     * Returns the packed sequence: $(D seq).
      */
     alias seq expand;
 
 
     /**
-     * The number of compile-time entities packed in.
+     * Returns the number of entities: $(D seq.length).
      */
     enum size_t length = seq.length;
 
 
-    /**
-     * Unique type associated with the packed sequence.
-     */
-    alias Packer Tag;
-
-
-    /* undocumented (value-packing doesn't work well at present) */
-    bool opEquals(rseq...)(Packer!rseq rhs)
-    {
-        return is(Tag == rhs.Tag);
-    }
-}
-
-/// ditto
-template pack(seq...)
-{
-    alias Packer!seq pack;
-}
-
-
-unittest    // basic tests
-{
-    alias pack!() empty;
-    static assert(empty.length == 0);
-    static assert(empty.expand.length == 0);
-
-    alias pack!(int, double) types;
-    static assert(is(types.expand == Seq!(int, double)));
-
-    alias pack!(10, 20, 30) values;
-    static assert([ values.expand ] == [ 10, 20, 30 ]);
-
-    alias pack!(int, 20, pack) mixed;
-    static assert(mixed.length == 3);
-    static assert(is(mixed.expand[0] == int));
-    static assert(   mixed.expand[1] ==  20 );
-
-    alias pack!( pack!1, pack!2, pack!int ) nesting;
-    static assert(nesting.length == 3);
-    static assert(nesting.expand[0]() == pack!1  ());
-    static assert(nesting.expand[1]() == pack!2  ());
-    static assert(nesting.expand[2]() == pack!int());
-}
-
-unittest    // doc example
-{
-    alias pack!(1, 2, 3) A;
-    alias pack!(4, 5, 6) B;
-    alias pack!(7, 8, 9) C;
-
-    foreach (i, pak; Seq!(A, B, C))
-    {
-        int[] seq = [ pak.expand ];
-    }
-}
-
-
-
-/**
-Returns $(D true) if and only if $(D E) is a packed sequence created
-with the $(D meta.pack).
-
-Example:
- $(D meta.zip) requires its arguments should be a sequence of packed
- sequences using $(D meta.isPacked).
---------------------
-template zip(seqs...)
-    if (meta.all!(meta.isPacked, seqs))
-{
-    // ... implementation ...
-}
---------------------
- */
-template isPacked(E)
-{
-    static if (is(E _ : Packer!seq, seq...))
-    {
-        enum isPacked = true;
-    }
-    else
-    {
-        enum isPacked = false;
-    }
-}
-
-/// ditto
-template isPacked(alias E)
-{
-    static if (is(E _ : Packer!seq, seq...))
-    {
-        enum isPacked = true;
-    }
-    else
-    {
-        enum isPacked = false;
-    }
+    /* undocumented (used by meta.tag) */
+    struct Tag;
 }
 
 
 unittest
 {
-    // positive
-    struct UserDefined {}
-    static assert(isPacked!(pack!()));
-    static assert(isPacked!(pack!(int)));
-    static assert(isPacked!(pack!(int, double)));
-    static assert(isPacked!(pack!(int, 3.1416)));
-    static assert(isPacked!(pack!(UserDefined)));
-    static assert(isPacked!(pack!(pack!(), pack!())));
+    alias pack!() empty;
+    static assert(empty.length == 0);
 
-    // negative
-    static assert(!isPacked!(1));
-    static assert(!isPacked!(int));
-    static assert(!isPacked!(pack));
+    int sym;
+    alias pack!(20, int, sym) mixed;
+    static assert(mixed.length == 3);
+    static assert(mixed.expand[0] == 20);
+    static assert(is(mixed.expand[1] == int));
+    static assert(__traits(isSame, mixed.expand[2], sym));
+
+    alias pack!( pack!(1,2), pack!(int,bool), pack!void ) nested;
+    static assert(nested.length == 3);
+}
+
+unittest    // doc example
+{
+    alias meta.transverse!(0, meta.pack!(int, 32),
+                              meta.pack!(double, 5.0),
+                              meta.pack!(string, "hello.")) first;
+    static assert(is(first[0] == int));
+    static assert(is(first[1] == double));
+    static assert(is(first[2] == string));
+}
+
+
+
+/* undocumented for now */
+template tag(seq...)
+{
+    enum tag = (pack!seq.Tag*).mangleof;
+}
+
+
+unittest
+{
+    alias meta.Seq!(int, "value") AA;
+    alias meta.Seq!(double, "number", 5.0) BB;
+
+    static assert(meta.tag!AA == meta.tag!AA);
+    static assert(meta.tag!AA != meta.tag!BB);
+    static assert(meta.tag!BB == meta.tag!BB);
 }
 
 
@@ -306,39 +231,10 @@ template insertFront(alias cdr, car...)
 unittest
 {
     alias insertFront!(pack!(), 1,2,3) empty123;
-    static assert(isPacked!empty123);
     static assert([ empty123.expand ] == [ 1,2,3 ]);
 
     alias insertFront!(pack!int, double) intdouble;
     static assert(is(intdouble.expand == Seq!(double, int)));
-}
-
-
-
-/**
- * TODO: doc
- */
-struct Tag(entities...);
-
-// It's intentionally made incomplete for bug 3372.
-
-unittest
-{
-    string sym;
-
-    // Can compare the type for equality.
-    alias Tag!int TagInt;
-    alias Tag!123 Tag123;
-    alias Tag!sym TagSym;
-    static assert(!is(TagInt == Tag123));
-    static assert(!is(Tag123 == TagSym));
-    static assert(!is(TagSym == TagInt));
-
-    // Can take pointers' properties.
-    enum mint = (TagInt*).mangleof;
-    enum m123 = (Tag123*).mangleof;
-    enum msym = (TagSym*).mangleof;
-    static assert(mint < m123);
 }
 
 
@@ -376,25 +272,21 @@ template isSame(A, B)
 }
 
 /// ditto
-template isSame(A, alias B)
-    if (!isType!B)
+template isSame(A, alias B) if (!isType!B)
 {
     enum isSame = false;
 }
 
 /// ditto
-template isSame(alias A, B)
-    if (!isType!A)
+template isSame(alias A, B) if (!isType!A)
 {
     enum isSame = false;
 }
 
 /// ditto
-template isSame(alias A, alias B)
-    if (!isType!A && !isType!B)
+template isSame(alias A, alias B) if (!isType!A && !isType!B)
 {
-    // Type templates match in terms of mangled names, effectively.
-    enum isSame = is(Tag!A == Tag!B);
+    enum isSame = is(pack!A.Tag == pack!B.Tag);
 }
 
 
@@ -403,19 +295,16 @@ unittest    // type vs type
     enum   E { a }
     struct S {}
 
-    // positive
     static assert(isSame!(int, int));
-    static assert(isSame!(  E,   E));
-    static assert(isSame!(  S,   S));
+    static assert(isSame!(E, E));
+    static assert(isSame!(S, S));
 
-    // qualifier
     static assert(!isSame!(const  int, int));
     static assert(!isSame!(shared int, int));
 
-    // different
-    static assert(!isSame!(int,   E));
-    static assert(!isSame!(  E,   S));
-    static assert(!isSame!(  S, int));
+    static assert(!isSame!(int, E));
+    static assert(!isSame!(E, S));
+    static assert(!isSame!(S, int));
 }
 
 unittest    // value vs value
@@ -437,12 +326,10 @@ unittest    // symbol vs symbol
     void fun() {}
     void pun() {}
 
-    // functions
     static assert( isSame!(fun, fun));
     static assert( isSame!(pun, pun));
     static assert(!isSame!(fun, pun));
 
-    // template, package
     static assert(isSame!(isSame, isSame));
     static assert(isSame!(   std,    std));
 
@@ -463,33 +350,31 @@ unittest    // mismatch
 unittest    // doc example
 {
     struct MyType {}
-    static assert( isSame!(int, int));
-    static assert(!isSame!(MyType, double));
+    static assert( meta.isSame!(int, int));
+    static assert(!meta.isSame!(MyType, double));
 
     enum str = "abc";
-    static assert( isSame!(str, "abc"));
-    static assert(!isSame!(10, 10u));
+    static assert( meta.isSame!(str, "abc"));
+    static assert(!meta.isSame!(10, 10u));
 
     void fun() {}
-    static assert( isSame!(fun, fun));
-    static assert(!isSame!(fun, std));
+    static assert( meta.isSame!(fun, fun));
+    static assert(!meta.isSame!(fun, std));
 }
 
 
 
 /**
-Convenience overloads.  If the second argument $(D B) is omitted,
-$(D meta.isSame!A) binds $(D A) to its own first parameter and returns a
-partially applied template.
+These overloads serve partial application of $(D meta.isSame).
 
 Example:
---------------------
-// Bind double as A.
+----------
+// Bind double as the first argument.
 alias meta.isSame!double isDouble;
 
 static assert( isDouble!double);    // meta.isSame!(double, double)
 static assert(!isDouble!int   );    // meta.isSame!(double, int)
---------------------
+----------
  */
 template isSame(A)
 {
@@ -541,7 +426,7 @@ unittest
 
 unittest    // doc example
 {
-    alias isSame!double isDouble;
+    alias meta.isSame!double isDouble;
 
     static assert( isDouble!double);
     static assert(!isDouble!int   );
@@ -640,7 +525,7 @@ unittest
 /* undocumented (for internal use) */
 template EntityTraits(entity...)
 {
-    enum string mangleof = entity.length ? stripTagM((Tag!entity*).mangleof)
+    enum string mangleof = entity.length ? stripTagM(tag!entity)
                                          : "";
     static if (entity.length == 1)
     {
@@ -662,7 +547,7 @@ private pure nothrow @safe
         enum
         {
             prefix = "PS3std8internal4meta4meta",
-            midfix = "__T3Tag",
+            midfix = "__T4pack",
             suffix =    "3Tag",
         }
         size_t from = prefix.length
@@ -706,10 +591,9 @@ unittest
 /* undocumented */
 template pseudoLess(entities...)
 {
-    // Gives strict weak ordering to every compile-time entity.
-    enum pseudoLess = (Tag!(entities[0])*).mangleof <
-                      (Tag!(entities[1])*).mangleof;
+    enum pseudoLess = tag!(entities[0]) < tag!(entities[1]);
 }
+
 
 unittest
 {
@@ -717,14 +601,11 @@ unittest
     static assert(pseudoLess!(10, -5)); // Yes
     static assert(pseudoLess!(int, 5));
 
-//  alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
-//  alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
-//  static assert(is(Tag!s1 == Tag!(double, int, 10, 20, "x", "y")));
-//  static assert(is(Tag!s2 == Tag!(double, int, 10, 20, "x", "y")));
+    alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
+    alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
+    static assert(tag!s1 == tag!(double, int, 10, 20, "x", "y"));
+    static assert(tag!s2 == tag!(double, int, 10, 20, "x", "y"));
 }
-
-
-// TODO: sequence-vs-sequence comparison using Tag
 
 
 
@@ -1033,10 +914,10 @@ unittest
     static assert(is(MakeConstAA!(int, string) == const(string)[int]));
 
     alias variadicT!q{ pack!(G, E, C, A, B, D, F, H) } Shuffle;
-    static assert(is(Shuffle!(int, double, string, bool,
-                              dchar, void*, short, byte)
-                     == pack!(short, dchar, string, int,
-                              double, bool, void*, byte)));
+    static assert(tag!(Shuffle!(int, double, string, bool,
+                                dchar, void*, short, byte))
+                  == tag!(pack!(short, dchar, string, int,
+                                double, bool, void*, byte)));
 
     // Mixing multicase parameters
     alias variadicT!q{ A[b][c] } Make2D;
@@ -1958,17 +1839,18 @@ template applier(args...)
     }
 }
 
+
 unittest
 {
     alias applier!() empty;
-    static assert(is(empty!Seq == Seq!()));
-    static assert(is(empty!pack == pack!()));
+    static assert( tag!(empty!Seq ) == tag!( Seq!()) );
+    static assert( tag!(empty!pack) == tag!(pack!()) );
 
     alias applier!(int, 100) int100;
-    alias int100!"A" K;
-    static assert(is(int100!pack == pack!(int, 100)));
-    static assert(is(int100!"A" == int));
+    static assert( tag!(int100!pack) == tag!(pack!(int, 100)) );
+    static assert( tag!(int100!q{ const A }) == tag!(const int) );
 }
+
 
 
 /* undocumented (for internal use) */
@@ -2038,9 +1920,9 @@ template expand(alias arr)
 
 unittest
 {
-    static assert(is( Tag!(expand!([])) == Tag!() ));
-    static assert(is( Tag!(expand!([1])) == Tag!(1) ));
-    static assert(is( Tag!(expand!([1,2,3,4])) == Tag!(1,2,3,4) ));
+    static assert( tag!(expand!([])) == tag!() );
+    static assert( tag!(expand!([1])) == tag!(1) );
+    static assert( tag!(expand!([1,2,3,4])) == tag!(1,2,3,4) );
 
     // type check
     static assert(is( typeof(expand!([1.0,2.0])[0]) == double ));
@@ -2086,9 +1968,9 @@ template expand(Arr : Arr[n], size_t n)
 
 unittest
 {
-    static assert(is( Tag!(expand!(int[0])) == Tag!() ));
-    static assert(is( Tag!(expand!(int[1])) == Tag!int ));
-    static assert(is( Tag!(expand!(int[4])) == Tag!(int, int, int, int) ));
+    static assert( tag!(expand!(int[0])) == tag!() );
+    static assert( tag!(expand!(int[1])) == tag!int );
+    static assert( tag!(expand!(int[4])) == tag!(int, int, int, int) );
 }
 
 
@@ -2462,9 +2344,9 @@ unittest
     alias replaceAt!(0, int, 1,2,3,4,5) T0;
     alias replaceAt!(2, int, 1,2,3,4,5) T2;
     alias replaceAt!(4, int, 1,2,3,4,5) T4;
-    static assert(is(Tag!T0 == Tag!(int,2,3,4,5)));
-    static assert(is(Tag!T2 == Tag!(1,2,int,4,5)));
-    static assert(is(Tag!T4 == Tag!(1,2,3,4,int)));
+    static assert(tag!T0 == tag!(int,2,3,4,5));
+    static assert(tag!T2 == tag!(1,2,int,4,5));
+    static assert(tag!T4 == tag!(1,2,3,4,int));
 }
 
 
@@ -2866,7 +2748,6 @@ Example:
 --------------------
  */
 template transverse(size_t i, seqs...)
-    if (all!(and!(isPacked, isLongerThan!i), seqs))
 {
     static if (seqs.length == 1)
     {
@@ -2914,7 +2795,6 @@ Example:
 --------------------
  */
 template zip(seqs...)
-    if (all!(isPacked, seqs))
 {
     alias zipWith!(pack, seqs) zip;
 }
@@ -2943,7 +2823,6 @@ Example:
 --------------------
  */
 template zipWith(alias fun, seqs...)
-    if (all!(isPacked, seqs))
 {
     alias map!(_zippingTransverser!(fun, seqs), iota!(minLength!seqs))
           zipWith;
@@ -2951,7 +2830,6 @@ template zipWith(alias fun, seqs...)
 
 /// ditto
 template zipWith(string fun, seqs...)
-    if (all!(isPacked, seqs))
 {
     alias zipWith!(variadicT!fun, seqs) zipWith;
 }
@@ -2998,7 +2876,6 @@ foreach (Comb; meta.cartesian!(meta.pack!(float, double, real),
 --------------------
  */
 template cartesian(seqs...)
-    if (seqs.length >= 1 && all!(isPacked, seqs))
 {
     alias _cartesian!seqs.Result cartesian;
 }
@@ -4419,19 +4296,14 @@ template shortest(seqs...)
 
 unittest
 {
-    // Trivial case.
-    static assert(is(shortest!(pack!(1,2,3)) == pack!(1,2,3)));
+    static assert(isSame!(shortest!(pack!(1,2,3)), pack!(1,2,3)));
 
     // Prefer first match.
     alias shortest!(pack!(1), pack!(2), pack!(3)) same1;
-    static assert(is(same1 == pack!(1)));
+    static assert(isSame!(same1, pack!(1)));
 
     alias shortest!(pack!(1,2), pack!(1), pack!(2)) same2;
-    static assert(is(same2 == pack!(1)));
-
-    // Works with any entities that have .length.
-    alias shortest!([ 1,2,3 ], "##", pack!(int,int,int)) mixed;
-    static assert(mixed == "##");
+    static assert(isSame!(same2, pack!(1)));
 }
 
 
@@ -4456,9 +4328,9 @@ template minLength(seqs...)
 //----------------------------------------------------------------------------//
 
 
-version (unittest) template _Set(seq...)
+version (unittest) template _set(seq...)
 {
-    alias Tag!(sortBy!(pseudoLess, seq)) _Set;
+    alias tag!(sortBy!(pseudoLess, seq)) _set;
 }
 
 
@@ -4482,9 +4354,9 @@ unittest
     alias setIntersection!(pack!a, pack!a) aa;
     alias setIntersection!(pack!a, pack!b) ab;
     alias setIntersection!(pack!b, pack!c) bc;
-    static assert(is( Tag!aa == _Set!(a) ));
-    static assert(is( Tag!ab == _Set!(1,2,4,7) ));
-    static assert(is( Tag!bc == _Set!(0,1,4,4,7,8) ));
+    static assert( tag!aa == _set!(a) );
+    static assert( tag!ab == _set!(1,2,4,7) );
+    static assert( tag!bc == _set!(0,1,4,4,7,8) );
 
     // types
     alias Seq!(int, int, double, string) T;
@@ -4494,9 +4366,9 @@ unittest
     alias setIntersection!(pack!T, pack!T) TT;
     alias setIntersection!(pack!T, pack!U) TU;
     alias setIntersection!(pack!U, pack!V) UV;
-    static assert(is( Tag!TT == _Set!(T) ));
-    static assert(is( Tag!TU == _Set!(double, int, string) ));
-    static assert(is( Tag!UV == _Set!(double, double, int) ));
+    static assert( tag!TT == _set!(T) );
+    static assert( tag!TU == _set!(double, int, string) );
+    static assert( tag!UV == _set!(double, double, int) );
 
     // degeneracy
     alias Seq!() e;
@@ -4574,9 +4446,9 @@ unittest
     alias setUnion!(pack!a, pack!a) aa;
     alias setUnion!(pack!a, pack!b) ab;
     alias setUnion!(pack!b, pack!c) bc;
-    static assert(is( Tag!aa == _Set!(a) ));
-    static assert(is( Tag!ab == _Set!(0,1,2,2,4,4,5,7,8,9) ));
-    static assert(is( Tag!bc == _Set!(0,1,2,4,4,5,7,8) ));
+    static assert( tag!aa == _set!(a) );
+    static assert( tag!ab == _set!(0,1,2,2,4,4,5,7,8,9) );
+    static assert( tag!bc == _set!(0,1,2,4,4,5,7,8) );
 
     // types
     alias Seq!(int, int, double, string) T;
@@ -4586,9 +4458,9 @@ unittest
     alias setUnion!(pack!T, pack!T) TT;
     alias setUnion!(pack!T, pack!U) TU;
     alias setUnion!(pack!U, pack!V) UV;
-    static assert(is( Tag!TT == _Set!(T) ));
-    static assert(is( Tag!TU == _Set!(int, int, double, double, string ) ));
-    static assert(is( Tag!UV == _Set!(double, double, void, string, int) ));
+    static assert( tag!TT == _set!(T) );
+    static assert( tag!TU == _set!(int, int, double, double, string ) );
+    static assert( tag!UV == _set!(double, double, void, string, int) );
 
     // degeneracy
     alias Seq!() e;
@@ -4664,9 +4536,9 @@ unittest
     alias setDifference!(pack!a, pack!b) ab;
     alias setDifference!(pack!b, pack!c) bc;
     alias setDifference!(pack!a, pack!c) ac;
-    static assert(is( Tag!ab == _Set!(2,5,9) ));
-    static assert(is( Tag!bc == _Set!(2) ));
-    static assert(is( Tag!ac == _Set!(2,2,9) ));
+    static assert( tag!ab == _set!(2,5,9) );
+    static assert( tag!bc == _set!(2) );
+    static assert( tag!ac == _set!(2,2,9) );
 
     // types
     alias Seq!(int, int, double, string) T;
@@ -4676,9 +4548,9 @@ unittest
     alias setDifference!(pack!T, pack!U) TU;
     alias setDifference!(pack!U, pack!V) UV;
     alias setDifference!(pack!T, pack!V) TV;
-    static assert(is( Tag!TU == _Set!(int        ) ));
-    static assert(is( Tag!UV == _Set!(string     ) ));
-    static assert(is( Tag!TV == _Set!(int, string) ));
+    static assert( tag!TU == _set!(int        ) );
+    static assert( tag!UV == _set!(string     ) );
+    static assert( tag!TV == _set!(int, string) );
 
     // degeneracy
     alias Seq!() e;
@@ -4756,9 +4628,9 @@ unittest
     alias setSymmetricDifference!(pack!a, pack!b) ab;
     alias setSymmetricDifference!(pack!b, pack!c) bc;
     alias setSymmetricDifference!(pack!a, pack!c) ac;
-    static assert(is( Tag!ab == _Set!(0,2,4,5,8,9) ));
-    static assert(is( Tag!bc == _Set!(2,5) ));
-    static assert(is( Tag!ac == _Set!(0,2,2,4,8,9) ));
+    static assert( tag!ab == _set!(0,2,4,5,8,9) );
+    static assert( tag!bc == _set!(2,5) );
+    static assert( tag!ac == _set!(0,2,2,4,8,9) );
 
     // types
     alias Seq!(int, int, double, string) T;
@@ -4768,9 +4640,9 @@ unittest
     alias setSymmetricDifference!(pack!T, pack!U) TU;
     alias setSymmetricDifference!(pack!U, pack!V) UV;
     alias setSymmetricDifference!(pack!T, pack!V) TV;
-    static assert(is( Tag!TU == _Set!(int, double) ));
-    static assert(is( Tag!UV == _Set!(string, void) ));
-    static assert(is( Tag!TV == _Set!(int, double, string, void) ));
+    static assert( tag!TU == _set!(int, double) );
+    static assert( tag!UV == _set!(string, void) );
+    static assert( tag!TV == _set!(int, double, string, void) );
 
     // degeneracy
     alias Seq!() e;
