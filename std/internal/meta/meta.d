@@ -50,24 +50,21 @@ import meta = std.internal.meta.meta;
 
 
 /**
-Returns an alias to the passed compile-time entity $(D E).
+Makes an alias of $(D E).
 
 Params:
- E = A compile-time entity: type, compile-time value, or any symbol that
-     has an identifier.
+ E = A compile-time entity: type, compile-time value, or any symbol.
 
 Example:
- You may want to use $(D Id) to alias a compile-time entity that
- may be a literal value.  The following example doesn't work without
- $(D Id) since $(D 10) cannot be $(D alias)ed.
---------------------
+ Literal values can't be aliased directly.  Use $(D meta.Id) as follows:
+----------
 template Front(seq...)
 {
     alias meta.Id!(seq[0]) Front;
 }
-alias Front!(int, short) Type;  // works
-alias Front!(10, 20, 30) value; // works
---------------------
+alias Front!(10, 20, 30) front;
+static assert(front == 10);
+----------
  */
 template Id(E)
 {
@@ -85,42 +82,55 @@ unittest
 {
     int sym;
 
-    alias Id!int T;
     alias Id!100 n;
+    alias Id!int T;
     alias Id!sym s;
+    static assert(n == 100);
     static assert(is(T == int));
-    static assert(   n == 100 );
     static assert(__traits(isSame, s, sym));
 
     // Test for run-time equivalence with "alias sym s;"
     assert(&s == &sym);
 }
 
+unittest    // doc example
+{
+    struct Scope
+    {
+        template Front(seq...)
+        {
+            alias meta.Id!(seq[0]) Front;
+        }
+    }
+    alias Scope.Front Front;
+
+    alias Front!(10, 20, 30) front;
+    static assert(front == 10);
+}
+
 
 
 /**
-Returns an alias to a sequence of compile-time entities $(D seq). It's
-the same thing as variadic template parameters.
-
-Params:
- seq = Zero or more compile-time entities.
+Makes a sequence of compile-time entities.  The sequence is just an alias of
+the template variadic arguments: $(D seq).
 
 Examples:
- The following example makes a sequence of types $(D Types) and uses its
- second element (= $(D double)) to declare a variable $(D value).
---------------------
+----------
 alias meta.Seq!(int, double, string) Types;
-Types[1] value = 3.14;
---------------------
+
+static assert(is(Types[0] == int));
+static assert(is(Types[1] == double));
+static assert(is(Types[2] == string));
+----------
 
  The sequence may contain compile-time expressions.  The following example
  makes a sequence of constant integers $(D numbers) and embeds it into an
  array literal.
---------------------
+----------
 alias meta.Seq!(10, 20, 30) numbers;
 int[] arr = [ 0, numbers, 100 ];
 assert(arr == [ 0, 10, 20, 30, 100 ]);
---------------------
+----------
  */
 template Seq(seq...)
 {
@@ -130,7 +140,17 @@ template Seq(seq...)
 
 unittest
 {
-    int[] arr = [ 0, Seq!(10, 20, 30), 100 ];
+    alias meta.Seq!(int, double, string) Types;
+
+    static assert(is(Types[0] == int));
+    static assert(is(Types[1] == double));
+    static assert(is(Types[2] == string));
+}
+
+unittest
+{
+    alias meta.Seq!(10, 20, 30) numbers;
+    int[] arr = [ 0, numbers, 100 ];
     assert(arr == [ 0, 10, 20, 30, 100 ]);
 }
 
