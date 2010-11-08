@@ -488,7 +488,16 @@ unittest    // doc example
 
 
 
-/* undocumented */
+/**
+Returns $(D true) if and only if $(D E) is a compile-time value involving
+no CTFE.
+ */
+template isValue(E)
+{
+    enum isValue = false;
+}
+
+/// ditto
 template isValue(alias E)
 {
     static if (is(typeof(E) T) && !is(T == void))
@@ -502,29 +511,49 @@ template isValue(alias E)
 }
 
 
-/* undocumented */
+unittest
+{
+    static immutable string staticConst = "immutable";
+    enum manifestConst = [ 1, 2, 3 ];
+    static assert(isValue!100);
+    static assert(isValue!staticConst);
+    static assert(isValue!manifestConst);
+
+    struct A
+    {
+        static @property int property() { return 0; }
+    }
+    string variable = "runtime";
+    static assert(!isValue!(A.property));
+    static assert(!isValue!variable);
+    static assert(!isValue!A);
+}
+
+
+
+/**
+Returns $(D true) if and only if $(D E) is a symbol, not value nor type.
+ */
+template isSymbol(E)
+{
+    enum isSymbol = false;
+}
+
+/// ditto
 template isSymbol(alias E)
 {
     enum isSymbol = EntityTraits!E.isSymbol;
 }
 
+
 unittest
 {
-    static immutable int v = 20;
-    enum k = 30;
-    static assert( isValue !(v));
-    static assert( isValue !(k));
-
     // CTFE'able properties should be considered as symbols
     struct S
     {
-        static @property int symbol()
-        {
-            return 10;
-        }
+        static @property int symbol() { return 10; }
     }
-    static assert(!isValue !(S.symbol));
-    static assert( isSymbol!(S.symbol));
+    static assert(isSymbol!(S.symbol));
 }
 
 
