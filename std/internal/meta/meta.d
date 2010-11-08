@@ -455,18 +455,17 @@ unittest    // doc example
 
 
 /**
-Returns $(D true) if and only if a compile-time entity $(D E) is a type.
+Returns $(D true) if and only if $(D E) is a type.
 
 Example:
---------------------
+----------
 alias meta.Seq!(int, "x",
-             double, "y",
-             string, "z") mixed;
+                double, "y",
+                string, "z") Mixed;
 
-// Filter out the types.
-alias meta.filter!(meta.isType, mixed) Types;
+alias meta.filter!(meta.isType, Mixed) Types;
 static assert(is(Types == meta.Seq!(int, double, string)));
---------------------
+----------
  */
 template isType(E)
 {
@@ -483,30 +482,57 @@ template isType(alias E)
 unittest
 {
     // Basic & qualified types.
-    static assert(isType!(          int));
-    static assert(isType!(const     int));
-    static assert(isType!(shared    int));
+    static assert(isType!(int));
+    static assert(isType!(const int));
+    static assert(isType!(shared int));
     static assert(isType!(immutable int));
 
     // User-defined types.
     enum   Enum   { a }
     struct Struct {}
-    union  Union  {}
     class  Class  {}
-    static assert(isType!Enum  );
+    static assert(isType!Enum);
     static assert(isType!Struct);
-    static assert(isType!Union );
-    static assert(isType!Class );
+    static assert(isType!Class);
+}
+
+unittest    // doc example
+{
+    alias meta.Seq!(int, "x",
+                    double, "y",
+                    string, "z") Mixed;
+
+    alias meta.filter!(meta.isType, Mixed) Types;
+    static assert(is(Types == meta.Seq!(int, double, string)));
 }
 
 
 
-/* undocumented */
+/**
+Returns $(D true) if and only if $(D E) has a compile-time value.  Literals,
+constants and CTFE-able property functions would pass the test.
+
+Example:
+----------
+template increment(alias value) if (isValue!value)
+{
+    enum increment = value + 1;
+}
+enum a = increment!10;
+enum b = increment!increment;   // Error: negates the constraint
+----------
+ */
+template isValue(E)
+{
+    enum isValue = false;
+}
+
+/// ditto
 template isValue(alias E)
 {
     static if (is(typeof(E) T) && !is(T == void))
     {
-        enum isValue = EntityTraits!E.isValue;
+        enum isValue = __traits(compiles, Id!([ E ]));
     }
     else
     {
@@ -515,114 +541,72 @@ template isValue(alias E)
 }
 
 
-/* undocumented */
-template isSymbol(alias E)
+unittest
 {
-    enum isSymbol = EntityTraits!E.isSymbol;
+    static struct S
+    {
+        int member;
+
+      @property:
+        static int fun() { return 10; }
+               int gun() { return 10; }
+        static int hun();
+    }
+
+    // Literal values
+    static assert(isValue!100);
+    static assert(isValue!"abc");
+    static assert(isValue!([ 1,2,3,4 ]));
+    static assert(isValue!(S(32)));
+
+    // Constants
+    static immutable staticConst = "immutable";
+    enum manifestConst = 123;
+    static assert(isValue!staticConst);
+    static assert(isValue!manifestConst);
+
+    // CTFE
+    static assert( isValue!(S.fun));
+    static assert(!isValue!(S.gun));
+    static assert(!isValue!(S.hun));
+
+    // Non-values
+    static assert(!isValue!int);
+    static assert(!isValue!S);
+    static assert(!isValue!isValue);
 }
 
 unittest
 {
-    static immutable int v = 20;
-    enum k = 30;
-    static assert( isValue !(v));
-    static assert( isValue !(k));
-
-    // CTFE'able properties should be considered as symbols
-    struct S
+    struct Scope
     {
-        static @property int symbol()
+        template increment(alias value) if (isValue!value)
         {
-            return 10;
+            enum increment = value + 1;
         }
     }
-    static assert(!isValue !(S.symbol));
-    static assert( isSymbol!(S.symbol));
-}
-
-
-
-/* undocumented (for internal use) */
-template EntityTraits(entity...)
-{
-    enum string mangleof = entity.length ? stripTagM(tag!entity)
-                                         : "";
-    static if (entity.length == 1)
-    {
-        enum
-        {
-            isType   = (mangleof[0] == 'T'),
-            isValue  = (mangleof[0] == 'V'),
-            isSymbol = (mangleof[0] == 'S'),
-        }
-        static assert(isType || isValue || isSymbol);
-    }
-    alias entity expand;
-}
-
-private pure nothrow @safe
-{
-    string stripTagM(in string mangle)
-    {
-        enum
-        {
-            prefix = "PS3std8internal4meta4meta",
-            midfix = "__T4pack",
-            suffix =    "3Tag",
-        }
-        size_t from = prefix.length
-                    + solveLogL(mangle.length - prefix.length
-                                              - suffix.length)
-                    + midfix.length;
-        return mangle[from .. $ - suffix.length - 1];
-    }
-
-    int solveLogL(in size_t N)
-    {
-        int k = 1;
-        for (size_t pow10k = 10; N >= pow10k + k + 1; pow10k *= 10)
-            ++k;
-        return k;
-    }
-}
-
-unittest
-{
-    alias EntityTraits!int intTr;
-    static assert(intTr.mangleof == "Ti");
-    static assert(intTr.isType);
-
-    enum string value = "\x20\x40\x60";
-    alias EntityTraits!value valueTr;
-    static assert(valueTr.mangleof == "VAyaa3_204060");
-    static assert(valueTr.isValue);
-
-    struct S
-    {
-        static @property int symbol() { return 0; }
-    }
-    alias EntityTraits!(S.symbol) symbolTr;
-    static assert(symbolTr.mangleof[$ - 14 .. $] == "1S6symbolFNdZi");
-    static assert(symbolTr.isSymbol);
+    alias Scope.increment increment;
+    static assert( __traits(compiles, increment!10));
+    static assert(!__traits(compiles, increment!increment));
 }
 
 
 
 /* undocumented */
-template pseudoLess(entities...)
+template metaComp(entities...) if (entities.length == 2)
 {
-    enum pseudoLess = tag!(entities[0]) < tag!(entities[1]);
+    enum metaComp = tag!(entities[0]) < tag!(entities[1]);
 }
 
 
 unittest
 {
-    static assert(pseudoLess!(10, 20));
-    static assert(pseudoLess!(10, -5)); // Yes
-    static assert(pseudoLess!(int, 5));
+    static assert(metaComp!(10, 20));
+    static assert(metaComp!(10, -5)); // Yes
+    static assert(metaComp!(int, 5));
 
-    alias sortBy!(pseudoLess,    int, "x", 10, double, "y", 20) s1;
-    alias sortBy!(pseudoLess, double, "y", 20,    int, "x", 10) s2;
+    alias sortBy!(metaComp,    int, "x", 10, double, "y", 20) s1;
+    alias sortBy!(metaComp, double, "y", 20,    int, "x", 10) s2;
     static assert(tag!s1 == tag!(double, int, 10, 20, "x", "y"));
     static assert(tag!s2 == tag!(double, int, 10, 20, "x", "y"));
 }
@@ -4350,7 +4334,7 @@ template minLength(seqs...)
 
 version (unittest) template _set(seq...)
 {
-    alias tag!(sortBy!(pseudoLess, seq)) _set;
+    alias tag!(sortBy!(metaComp, seq)) _set;
 }
 
 
@@ -4360,7 +4344,7 @@ version (unittest) template _set(seq...)
  */
 template setIntersection(alias A, alias B)
 {
-    alias setIntersectionBy!(pseudoLess, A, B) setIntersection;
+    alias setIntersectionBy!(metaComp, A, B) setIntersection;
 }
 
 
@@ -4452,7 +4436,7 @@ private template _SetIntersection(alias comp)
  */
 template setUnion(alias A, alias B)
 {
-    alias setUnionBy!(pseudoLess, A, B) setUnion;
+    alias setUnionBy!(metaComp, A, B) setUnion;
 }
 
 
@@ -4542,7 +4526,7 @@ private template _SetUnion(alias comp)
  */
 template setDifference(alias A, alias B)
 {
-    alias setDifferenceBy!(pseudoLess, A, B) setDifference;
+    alias setDifferenceBy!(metaComp, A, B) setDifference;
 }
 
 
@@ -4634,7 +4618,7 @@ private template _SetDifference(alias comp)
  */
 template setSymmetricDifference(alias A, alias B)
 {
-    alias setSymmetricDifferenceBy!(pseudoLess, A, B) setSymmetricDifference;
+    alias setSymmetricDifferenceBy!(metaComp, A, B) setSymmetricDifference;
 }
 
 
