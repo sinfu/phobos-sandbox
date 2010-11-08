@@ -1876,11 +1876,11 @@ template apply(string expr, args...)
 
 
 /**
-Expands a compile-time array to a sequence of the elements.
+Expands a compile-time array into a sequence of the elements.
 
 Params:
  arr = Compile-time expression of an array.  The array can be dynamic or
-       static, but its length and elements must be known at compile-time.
+       static.  The length and elements must be known at compile-time.
 
 Returns:
  Sequence of the elements of $(D arr).
@@ -1888,8 +1888,7 @@ Returns:
 Example:
  Using $(D meta.expand) to apply a meta algorithm $(D meta.map) on
  elements of a compile-time array.
---------------------
-// Array of function names.
+----------
 enum functions = [ "fun", "gun", "hun" ];
 
 // Use meta.map to transform the function names into signatures with
@@ -1901,7 +1900,11 @@ alias meta.map!(meta.lambda!(
                         enum _ = "auto "~ a ~"(Args...)(Args args)";
                     }),
                 meta.expand!functions) signatures;
---------------------
+
+static assert(signatures[0] == "auto fun(Args...)(Args args)");
+static assert(signatures[1] == "auto gun(Args...)(Args args)");
+static assert(signatures[2] == "auto hun(Args...)(Args args)");
+----------
  */
 template expand(alias arr)
 {
@@ -1942,6 +1945,9 @@ unittest    // doc example
                             enum _ = "auto "~ a ~"(Args...)(Args args)";
                         }),
                     meta.expand!functions) signatures;
+    static assert(signatures[0] == "auto fun(Args...)(Args args)");
+    static assert(signatures[1] == "auto gun(Args...)(Args args)");
+    static assert(signatures[2] == "auto hun(Args...)(Args args)");
 }
 
 
