@@ -1953,39 +1953,6 @@ unittest    // doc example
 
 
 /**
-Expands a static array type into a sequence of its element types.
-
-Params:
- Arr = Type of a static array.
-   n = The length of the static array; it's automatically deduced by the
-       language when instantiating this template.
-
-Returns:
- The element type of $(D Arr) repeated $(D n) times.  The empty sequence is
- returned if $(D n == 0).
-
-Example:
---------------------
-alias meta.expand!(int[4]) int4;
-static assert(is(Tag!int4 == Tag!(int, int, int, int)));
---------------------
- */
-template expand(Arr : Arr[n], size_t n)
-{
-    alias repeat!(n, Arr) expand;
-}
-
-
-unittest
-{
-    static assert( tag!(expand!(int[0])) == tag!() );
-    static assert( tag!(expand!(int[1])) == tag!int );
-    static assert( tag!(expand!(int[4])) == tag!(int, int, int, int) );
-}
-
-
-
-/**
 Yields a sequence of numbers starting from $(D beg) to $(D end) with the
 specified $(D step).
 
