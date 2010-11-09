@@ -1332,7 +1332,7 @@ Returns:
 
 Example:
 ----------
-alias meta.fixed!(meta.Id, int) intFixed;
+alias meta.fix!(meta.Id, int) intFixed;
 static assert(is(intFixed!() == int));
 static assert(is(intFixed!(void) == int));
 static assert(is(intFixed!(1,2,3) == int));
@@ -2171,11 +2171,11 @@ private // iota for floating-point numbers
         template count(alias end)
         {
             // Dumb 'ceil' function.
-            static if ((step > 0 && transform!(basicCount!end) >= end) ||
-                       (step < 0 && transform!(basicCount!end) <= end))
-                enum count = basicCount!end;
-            else
+            static if ((step > 0 && transform!(basicCount!end) < end) ||
+                       (step < 0 && transform!(basicCount!end) > end))
                 enum count = basicCount!end + 1;
+            else
+                enum count = basicCount!end;
         }
 
         template basicCount(alias end)
@@ -2201,10 +2201,10 @@ unittest
     static assert([ iota!( 5.0,  3) ] == []);
     static assert([ iota!(-0.9, -1) ] == []);
 
-    static assert([ iota!(1.0, 3.1, 0.5) ] == [ 1.0, 1.5, 2.0, 2.5, 3.0 ]);
-    static assert([ iota!(1.0, 1.5,  10) ] == [ 1.0 ]);
+    static assert([ iota!(1.0, 3.01, 1) ] == [ 1.0, 2.0, 3.0 ]);
+    static assert([ iota!(1.0, 1.5, 10) ] == [ 1.0 ]);
     static assert([ iota!(2.0, 1.5, -10) ] == [ 2.0 ]);
-    static assert([ iota!(2.0,  10,  -1) ] == []);
+    static assert([ iota!(2.0, 10, -1) ] == []);
 }
 
 
