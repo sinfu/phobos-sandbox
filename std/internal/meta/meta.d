@@ -2082,7 +2082,7 @@ private // iota for integral numbers
     {
         template upto(alias end)
         {
-            alias iterate!(count!end, increment, beg) upto;
+            alias recur!(count!end, increment, beg) upto;
         }
 
      private:
@@ -2188,43 +2188,49 @@ unittest
 
 
 /**
-TODO
+Generates a sequence by repeatedly applying $(D fun) on generated elements,
+and takes the first $(D n) results:
+----------
+meta.recur!(n, fun, Seed) = (Seed, fun!Seed, fun!(fun!Seed), ...)
+----------
 
 Params:
-    n = .
-  fun = .
- Seed = .
+    n = Number of recurrences.  Specify zero to get the empty sequence.
+  fun = Recurrence template that computes the next state.  The state can be
+        any sequence which can be passed to $(D fun) itself.
+ Seed = Initial state.
 
 Returns:
- .
+ Sequence composed of $(D Seed) followed by $(D fun!Seed), $(D fun!(fun!Seed)),
+ ... etc., ending with the $(D n-1) repeated application of $(D fun).
 
 Example:
---------------------
-alias meta.iterate!(4, q{ A* }, int) Pointers;
+----------
+alias meta.recur!(4, q{ A* }, int) Pointers;
 static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
---------------------
+----------
  */
-template iterate(size_t n, alias fun, Seed...)
+template recur(size_t n, alias fun, Seed...)
 {
     static if (n < 2)
     {
-        alias Seed[0 .. n * $] iterate;
+        alias Seed[0 .. n * $] recur;
     }
     else
     {
-        alias Seq!(Seed, iterate!(n - 1, fun, apply!(fun, Seed))) iterate;
+        alias Seq!(Seed, recur!(n - 1, fun, apply!(fun, Seed))) recur;
     }
 }
 
 
 unittest
 {
-    static assert([ meta.iterate!(8, q{ a + 1 }, 1) ] == [ 1,2,3,4,5,6,7,8 ]);
+    static assert([ meta.recur!(8, q{ a + 1 }, 1) ] == [ 1,2,3,4,5,6,7,8 ]);
 }
 
 unittest    // doc example
 {
-    alias meta.iterate!(4, q{ A* }, int) Pointers;
+    alias meta.recur!(4, q{ A* }, int) Pointers;
     static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
 }
 
