@@ -614,7 +614,7 @@ unittest
 
 
 
-/* undocumented */
+/* undocumented for now */
 template metaComp(entities...) if (entities.length == 2)
 {
     enum metaComp = tag!(entities[0]) < tag!(entities[1]);
