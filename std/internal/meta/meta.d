@@ -2644,30 +2644,33 @@ unittest
 
 
 /**
-Splits sequence $(D seq) into segments of length $(D n).
+Splits sequence $(D seq) into segments of the same length $(D n).
 
 Params:
-   n = The size of each _segment. $(D n) may not be zero.
- seq = Sequence to _segment.
+   n = The size of each _segment.  $(D n) must not be zero.
+ seq = Sequence to split.  The sequence can have arbitrary length.
 
 Returns:
- Sequence of packed segments of length $(D n).  The last _segment can
- be shorter than $(D n) if $(D seq.length) is not a multiple of $(D n).
+ Sequence of packed segments of length $(D n).  Each segment is packed using
+ $(D meta.pack); use the $(D expand) property to yield the contents.
+
+ The last _segment can be shorter than $(D n) if $(D seq.length) is not an
+ exact multiple of $(D n).  The empty sequence is returned if $(D seq) is
+ empty.
 
 Example:
  $(D meta.segment) would be useful to scan simple patterns out of
  template parameters or other sequences.
 ----------
-alias meta.Seq!(int,    "x", 10,
-                double, "y", 20) config;
+alias meta.Seq!(int, "index", 10,
+                double, "number", 5.0) seq;
 
-alias meta.segment!(3, config) patterns;
-static assert(meta.isSame!(patterns[0], meta.pack!(int,    "x", 10)));
-static assert(meta.isSame!(patterns[1], meta.pack!(double, "y", 20)));
+alias meta.segment!(3, seq) patterns;
+static assert(meta.isSame!(patterns[0], meta.pack!(int, "index", 10)));
+static assert(meta.isSame!(patterns[1], meta.pack!(double, "number", 5.0)));
 ----------
  */
-template segment(size_t n, seq...)
-    if (n >= 1)
+template segment(size_t n, seq...) if (n >= 1)
 {
     alias segmentWith!(pack, n, seq) segment;
 }
@@ -2675,6 +2678,27 @@ template segment(size_t n, seq...)
 
 unittest
 {
+    alias segment!(1) empty1;
+    alias segment!(9) empty9;
+    static assert(empty1.length == 0);
+    static assert(empty9.length == 0);
+
+    alias segment!(1, 1,2,3,4) seg1;
+    alias segment!(2, 1,2,3,4) seg2;
+    alias segment!(3, 1,2,3,4) seg3;
+    static assert(tag!seg1 == tag!(pack!(1), pack!(2), pack!(3), pack!(4)));
+    static assert(tag!seg2 == tag!(pack!(1,2), pack!(3,4)));
+    static assert(tag!seg3 == tag!(pack!(1,2,3), pack!4));
+}
+
+unittest
+{
+    alias meta.Seq!(int, "index", 10,
+                    double, "number", 5.0) seq;
+
+    alias meta.segment!(3, seq) patterns;
+    static assert(meta.isSame!(patterns[0], meta.pack!(int, "index", 10)));
+    static assert(meta.isSame!(patterns[1], meta.pack!(double, "number", 5.0)));
 }
 
 
