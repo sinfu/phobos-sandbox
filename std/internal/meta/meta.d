@@ -260,9 +260,20 @@ unittest
 
 
 /**
-Determines if $(D A) and $(D B) are the same compile-time entities
-or not.  $(D A) and $(D B) are considered the same if their mangled
-names as template arguments coincide with each other.
+Determines if $(D A) and $(D B) are the same entities.
+
+$(D A) and $(D B) are compared in terms of their mangled names.  So, a
+literal value $(D 10) and a CTFE capable property function returning $(D 10)
+are considered different; literals are values and properties are symbols.
+----------
+struct S
+{
+    static @property int property() { return 10; }
+}
+static assert( meta.isSame!(10, 10));
+static assert(!meta.isSame!(S.property, 10));
+static assert( meta.isSame!(S.property, S.property));
+----------
 
 Returns:
  $(D true) if and only if $(D A) and $(D B) are the same entity.
@@ -306,7 +317,7 @@ template isSame(alias A, B) if (!isType!A)
 /// ditto
 template isSame(alias A, alias B) if (!isType!A && !isType!B)
 {
-    enum isSame = is(pack!A.Tag == pack!B.Tag);
+    enum isSame = is(pack!A.Tag == pack!B.Tag); // type <=> mangleof
 }
 
 
@@ -365,6 +376,17 @@ unittest    // mismatch
     static assert(!isSame!(   int,     40));
     static assert(!isSame!(isSame,     40));
     static assert(!isSame!(    40, isSame));
+}
+
+unittest    // doc example (property)
+{
+    struct S
+    {
+        static @property int property() { return 10; }
+    }
+    static assert( meta.isSame!(10, 10));
+    static assert(!meta.isSame!(S.property, 10));
+    static assert( meta.isSame!(S.property, S.property));
 }
 
 unittest    // doc example
