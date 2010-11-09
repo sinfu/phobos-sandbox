@@ -536,7 +536,7 @@ constants and CTFE-able property functions would pass the test.
 
 Example:
 ----------
-template increment(alias value) if (isValue!value)
+template increment(alias value) if (meta.isValue!value)
 {
     enum increment = value + 1;
 }
@@ -602,7 +602,7 @@ unittest
 {
     struct Scope
     {
-        template increment(alias value) if (isValue!value)
+        template increment(alias value) if (meta.isValue!value)
         {
             enum increment = value + 1;
         }
