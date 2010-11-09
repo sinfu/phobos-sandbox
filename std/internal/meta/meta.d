@@ -2225,7 +2225,13 @@ template recur(size_t n, alias fun, Seed...)
 
 unittest
 {
-    static assert([ meta.recur!(8, q{ a + 1 }, 1) ] == [ 1,2,3,4,5,6,7,8 ]);
+    static assert([ recur!(0, q{ a*5 }, 1) ] == [ ]);
+    static assert([ recur!(1, q{ a*5 }, 1) ] == [ 1 ]);
+    static assert([ recur!(2, q{ a*5 }, 1) ] == [ 1,5 ]);
+    static assert([ recur!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
+
+    alias recur!(3, q{ Seq!(args, void) }, int) VI;
+    static assert(is(VI == meta.Seq!(int, int, void, int, void, void)));
 }
 
 unittest    // doc example
