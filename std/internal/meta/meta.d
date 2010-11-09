@@ -1857,6 +1857,17 @@ unittest     // doc example
 
 
 /* undocumented (for internal use) */
+template compiles(templates...)
+{
+    template compiles(args...)
+    {
+        enum compiles = __traits(compiles, map!(applier!args, templates));
+    }
+}
+
+
+
+/* undocumented (for internal use) */
 template applier(args...)
 {
     template applier(alias templat)
@@ -2783,49 +2794,70 @@ unittest
 
 
 /**
-.
+Given sequence of packed sequences, generates a sequence transversing
+the $(D i)-th element of each of the sequences.
 
 Params:
-    i = .
- seqs = .
+    i = Valid index for each packed sequence in $(D seqs).
+ seqs = Sequence of packed sequences.  Each packed sequence must have a
+        property $(D expand) that yields a sequence and its length must be
+        greater than $(D i).
 
 Returns:
- .
+ Sequence composed of the $(D i)-th element of each of the given sequences.
 
 Example:
 ----------
-.
+alias meta.transverse!(1, meta.pack!(int, 255),
+                          meta.pack!(double, 7.5),
+                          meta.pack!(string, "yo")) second;
+static assert(meta.tag!second == meta.tag!(255, 7.5, "yo"));
 ----------
  */
-template transverse(size_t i, seqs...)
+template transverse(size_t i, seqs...) if (isTransversable!(i, seqs))
 {
-    static if (seqs.length == 1)
-    {
-        alias Seq!(seqs[0].expand[i]) transverse;
-    }
-    else
-    {
-        // Halving seqs reduces the recursion depth.
-        alias Seq!(transverse!(i, seqs[ 0  .. $/2]),
-                   transverse!(i, seqs[$/2 ..  $ ])) transverse;
-    }
+    alias map!(unpackAt!i, seqs) transverse;
 }
 
-// Degeneracy case.
-template transverse(size_t i) { alias Seq!() transverse; }
-
-
-private template isLongerThan(size_t i)
+private
 {
-    template isLongerThan(alias seq)
+    template unpackAt(size_t i)
     {
-        enum isLongerThan = (i < seq.length);
+        template unpackAt(alias pak) { alias pak.expand[i .. i+1] unpackAt; }
+    }
+
+    template isTransversable(size_t i, seqs...)
+    {
+        enum isTransversable = all!(compiles!(unpackAt!i), seqs);
     }
 }
 
 
 unittest
 {
+    alias transverse!0 empty0;
+    alias transverse!9 empty9;
+    static assert(empty0.length == 0);
+    static assert(empty9.length == 0);
+
+    alias transverse!(0, pack!(int, double, string)) single0;
+    alias transverse!(2, pack!(int, double, string)) single2;
+    static assert(is(single0 == Seq!int));
+    static assert(is(single2 == Seq!string));
+
+    alias transverse!(1, pack!(1,2), pack!(3,4,5), pack!(6,7)) jagged;
+    static assert([ jagged ] == [ 2,4,7 ]);
+
+    static assert(!__traits(compiles, transverse!(0, 1,2,3) ));
+    static assert(!__traits(compiles, transverse!(0, pack!1, pack!()) ));
+}
+
+unittest
+{
+    alias meta.transverse!(1, meta.pack!(int, 255),
+                              meta.pack!(double, 7.5),
+                              meta.pack!(string, "yo")) second;
+    static assert(meta.tag!second == meta.tag!(255, 7.5, "yo"));
 }
 
 
