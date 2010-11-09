@@ -2454,6 +2454,14 @@ unittest
 
 
 
+/* undocumented (used by stride) */
+template frontof(seq...)
+{
+    alias Id!(seq[0]) frontof;
+}
+
+
+
 //----------------------------------------------------------------------------//
 // Topological Algorithms
 //----------------------------------------------------------------------------//
@@ -2580,31 +2588,33 @@ unittest
 
 
 /**
-Picks up elements of sequence with _stride $(D n).
+Gets the elements of sequence with _stride $(D n).
 
 Params:
-   n = Stride width.  $(D n) may not be zero.
+   n = Stride width.  $(D n) must not be zero.
  seq = Sequence to _stride.
 
 Returns:
  Sequence of $(D 0,n,2n,...)-th elements of the given sequence:
- $(D (seq[0], seq[n], seq[2*n], ...)).
+ $(D (seq[0], seq[n], seq[2*n], ...)).  The empty sequence is returned if the
+ given sequence $(D seq) is empty.
 
 Example:
 ----------
-.
+alias meta.Seq!(int, "index", 10,
+                double, "number", 5.0) seq;
+alias meta.stride!(3, seq        ) Types;
+alias meta.stride!(3, seq[1 .. $]) names;
+
+static assert(meta.tag!Types == meta.tag!(int, double));
+static assert(meta.tag!names == meta.tag!("index", "number"));
 ----------
  */
-template stride(size_t n, seq...)
-    if (n >= 1)
+template stride(size_t n, seq...) if (n >= 1)
 {
-    alias segmentWith!(_Front, n, seq) stride;
+    alias segmentWith!(frontof, n, seq) stride;
 }
 
-private template _Front(seq...)
-{
-    alias Id!(seq[0]) _Front;
-}
 
 unittest
 {
@@ -2612,8 +2622,23 @@ unittest
     static assert(is(stride!(2) == Seq!()));
     static assert(is(stride!(5) == Seq!()));
 
-    static assert(is(stride!(1, int, double, string) ==
-                        Seq!(   int, double, string)));
+    alias stride!(1, int, double, string) asis;
+    static assert(tag!asis == tag!(int, double, string));
+
+    static assert([ stride!(2, 1,2,3,4,5) ] == [ 1,3,5 ]);
+    static assert([ stride!(3, 1,2,3,4,5) ] == [ 1,4 ]);
+    static assert([ stride!(5, 1,2,3,4,5) ] == [ 1 ]);
+}
+
+unittest
+{
+    alias meta.Seq!(int, "index", 10,
+                    double, "number", 5.0) seq;
+    alias meta.stride!(3, seq        ) Types;
+    alias meta.stride!(3, seq[1 .. $]) names;
+
+    static assert(meta.tag!Types == meta.tag!(int, double));
+    static assert(meta.tag!names == meta.tag!("index", "number"));
 }
 
 
@@ -2671,38 +2696,29 @@ Example:
 ----------
 ----------
  */
-template segmentWith(alias fun, size_t n, seq...)
-    if (n >= 1)
+template segmentWith(alias fun, size_t n, seq...) if (n == 1)
 {
-    static if (n == 1)
-    {
-        alias map!(fun, seq) segmentWith;
-    }
-    else
-    {
-        static if (seq.length == 0)
-        {
-            alias Seq!() segmentWith;
-        }
-        else static if (seq.length <= n)
-        {
-            alias Seq!(fun!seq) segmentWith;
-        }
-        else
-        {
-            // Halving seq reduces the recursion depth.
-            alias Seq!(segmentWith!(fun, n, seq[0 .. _segmentMid!($, n)     ]),
-                       segmentWith!(fun, n, seq[     _segmentMid!($, n) .. $]))
-                  segmentWith;
-        }
-    }
+    alias map!(fun, seq) segmentWith;
 }
 
 /// ditto
-template segmentWith(string fun, size_t n, seq...)
-    if (n >= 1)
+template segmentWith(alias fun, size_t n, seq...) if (n > 1)
 {
-    alias segmentWith!(variadicT!fun, n, seq) segmentWith;
+    static if (seq.length == 0)
+    {
+        alias Seq!() segmentWith;
+    }
+    else static if (seq.length <= n)
+    {
+        alias Seq!(apply!(fun, seq)) segmentWith;
+    }
+    else
+    {
+        // Halving seq reduces the recursion depth.
+        alias Seq!(segmentWith!(fun, n, seq[0 .. _segmentMid!($, n)     ]),
+                   segmentWith!(fun, n, seq[     _segmentMid!($, n) .. $]))
+              segmentWith;
+    }
 }
 
 
@@ -2975,8 +2991,8 @@ template map(string fun, seq...)
 }
 
 
-// Degeneracy case.
-template map(alias fun) { alias Seq!() map; }
+template map(alias  fun) { alias Seq!() map; }
+template map(string fun) { alias Seq!() map; }
 
 
 unittest
