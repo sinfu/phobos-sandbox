@@ -2466,8 +2466,7 @@ Params:
  seq = Sequence to _reverse.
 
 Returns:
- $(D seq) in the _reverse order.  The empty sequence is returned if $(D seq)
- is empty.
+ $(D seq) in the _reverse order.
 
 Example:
 ----------
@@ -2492,7 +2491,6 @@ template reverse(seq...)
 
 unittest
 {
-    // degeneracy
     static assert(is(reverse!() == Seq!()));
 
     // basic
@@ -2514,22 +2512,25 @@ unittest
 
 
 /**
-Rotates $(D seq) by $(D n).  The result is, conceptually,
-$(D (seq[n .. $], seq[0 .. n])).
+Rotates $(D seq) by $(D n).  If $(D n) is positive and less than $(D seq),
+the result is $(D (seq[n .. $], seq[0 .. n])).
 
 Params:
    n = The amount of rotation.  The sign determines the direction:
        positive for left rotation and negative for right rotation.
-       This parameter can be zero or larger than $(D seq.length).
+       This argument can be zero or larger than $(D seq.length).
  seq = Sequence to _rotate.
 
 Returns:
- Sequence $(D seq) rotated by $(D n).  The empty sequence is returned
- if $(D seq) is empty.
+ Sequence $(D seq) rotated by $(D n).
 
 Example:
 ----------
-.
+alias meta.rotate!(+1, int, double, string) rotL;
+alias meta.rotate!(-1, int, double, string) rotR;
+
+static assert(meta.tag!rotL == meta.tag!(double, string, int));
+static assert(meta.tag!rotR == meta.tag!(string, int, double));
 ----------
  */
 template rotate(sizediff_t n, seq...)
