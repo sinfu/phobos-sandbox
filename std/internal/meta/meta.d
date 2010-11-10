@@ -2863,27 +2863,86 @@ unittest
 
 
 /**
-.
+Generates a sequence iterating given sequences in lockstep.  The iteration
+stops on encountering the end of the shortest sequence.
 
 Params:
- seqs = Sequence of packed sequences.
+ seqs = Sequence of packed sequences.  Each packed sequence must have a
+        property $(D expand) that yields a sequence.
 
 Returns:
- .
+ Sequence of the transversals of $(D seqs), each of which is the result of
+ $(D meta.transversal) packed in a $(D meta.pack).  The empty sequence is
+ returned if $(D seqs) is empty or any of the sequences is empty.
 
 Example:
 ----------
-.
+alias meta.zip!(meta.pack!(int, 255),
+                meta.pack!(double, 7.5),
+                meta.pack!(string, "yo")) zipped;
+static assert(meta.isSame!(zipped[0], meta.pack!(int, double, string)));
+static assert(meta.isSame!(zipped[1], meta.pack!(255, 7.5, "yo")));
 ----------
  */
-template zip(seqs...)
+template zip(seqs...) if (isZippable!seqs)
 {
     alias zipWith!(pack, seqs) zip;
+}
+
+private
+{
+    template isZippable(seqs...)
+    {
+        static if (_minLength!seqs == 0)
+            enum isZippable = true;
+        else
+            enum isZippable = isTransversable!(_minLength!seqs - 1, seqs);
+    }
+
+    template _minLength(seqs...)
+    {
+        static if (seqs.length == 0)
+            enum _minLength = 0;
+        else
+            enum _minLength = _shortest!seqs.length;
+    }
+
+    template _shortest(seqs...) if (seqs.length > 0)
+    {
+        alias most!(q{ a.length < b.length }, seqs) _shortest;
+    }
 }
 
 
 unittest
 {
+    alias zip!() empty;
+    static assert(empty.length == 0);
+
+    alias zip!(pack!(int, double, bool), pack!(4, 8, 1)) zip3;
+    static assert(zip3.length == 3);
+    static assert(isSame!(zip3[0], pack!(   int, 4)));
+    static assert(isSame!(zip3[1], pack!(double, 8)));
+    static assert(isSame!(zip3[2], pack!(  bool, 1)));
+
+    alias zip!(pack!(int, double, string),
+               pack!("i", "x"),
+               pack!(5, 1.5, "moinmoin")) jagged;
+    static assert(jagged.length == 2);
+    static assert(isSame!(jagged[0], pack!(   int, "i",   5)));
+    static assert(isSame!(jagged[1], pack!(double, "x", 1.5)));
+
+    alias zip!(pack!int, pack!(), pack!(double, string)) degen;
+    static assert(degen.length == 0);
+}
+
+unittest
+{
+    alias meta.zip!(meta.pack!(int, 255),
+                    meta.pack!(double, 7.5),
+                    meta.pack!(string, "yo")) zipped;
+    static assert(meta.isSame!(zipped[0], meta.pack!(int, double, string)));
+    static assert(meta.isSame!(zipped[1], meta.pack!(255, 7.5, "yo")));
 }
 
 
@@ -2906,7 +2965,7 @@ Example:
  */
 template zipWith(alias fun, seqs...)
 {
-    alias map!(_zippingTransverser!(fun, seqs), iota!(minLength!seqs))
+    alias map!(_zippingTransverser!(fun, seqs), iota!(_minLength!seqs))
           zipWith;
 }
 
@@ -4366,41 +4425,6 @@ unittest    // doc example
     interface J {}
     static assert( isValidBase!(B, I, J));
     static assert(!isValidBase!(B, I, C));
-}
-
-
-
-/* undocumented (for internal use) */
-template shortest(seqs...)
-{
-    alias most!(q{ a.length < b.length }, seqs) shortest;
-}
-
-unittest
-{
-    static assert(isSame!(shortest!(pack!(1,2,3)), pack!(1,2,3)));
-
-    // Prefer first match.
-    alias shortest!(pack!(1), pack!(2), pack!(3)) same1;
-    static assert(isSame!(same1, pack!(1)));
-
-    alias shortest!(pack!(1,2), pack!(1), pack!(2)) same2;
-    static assert(isSame!(same2, pack!(1)));
-}
-
-
-
-/* undocumented (for internal use) */
-template minLength(seqs...)
-{
-    static if (seqs.length == 0)
-    {
-        enum size_t minLength = 0;
-    }
-    else
-    {
-        enum size_t minLength = shortest!seqs.length;
-    }
 }
 
 
