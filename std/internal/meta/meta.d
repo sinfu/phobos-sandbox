@@ -2948,45 +2948,69 @@ unittest
 
 
 /**
-Generalization of the $(D meta.zip).  It zippes elements with $(D fun)
-instead of the $(D meta.pack).
+Generalization of $(D meta.zip) passing each transversal to $(D fun), instead
+of packing with $(D meta.pack).
 
 Params:
-  fun = Template or expression string of arity $(D seqs.length).
+  fun = Template of arity $(D seqs.length) that transforms each transversal.
  seqs = Sequence of packed sequences.
 
 Returns:
- .
+ Sequence of the results of $(D fun) applied to each transversal of $(D seqs).
 
 Example:
 ----------
-.
+alias meta.pack!("int", "double", "string") types;
+alias meta.pack!(  "i",      "x",      "s") names;
+alias meta.zipWith!(q{ a~" "~b }, types, names) zipped;
+
+static assert(zipped[0] == "int i");
+static assert(zipped[1] == "double x");
+static assert(zipped[2] == "string s");
 ----------
  */
-template zipWith(alias fun, seqs...)
+template zipWith(alias fun, seqs...) if (isZippable!seqs)
 {
-    alias map!(_zippingTransverser!(fun, seqs), iota!(_minLength!seqs))
-          zipWith;
+    alias map!(_transverser!(variadicT!fun, seqs), iota!(_minLength!seqs)) zipWith;
 }
 
-/// ditto
-template zipWith(string fun, seqs...)
+private template _transverser(alias fun, seqs...)
 {
-    alias zipWith!(variadicT!fun, seqs) zipWith;
-}
-
-
-private template _zippingTransverser(alias fun, seqs...)
-{
-    template _zippingTransverser(size_t i)
+    template _transverser(size_t i)
     {
-        alias fun!(transverse!(i, seqs)) _zippingTransverser;
+        alias fun!(transverse!(i, seqs)) _transverser;
     }
 }
 
 
 unittest
 {
+    static struct MyPack(int n, T);
+
+    alias zipWith!(compose!(MyPack, reverse),
+                   pack!(int, double, string),
+                   pack!(  1,      2,      3)) revzip;
+    static assert(is(revzip[0] == MyPack!(1,    int)));
+    static assert(is(revzip[1] == MyPack!(2, double)));
+    static assert(is(revzip[2] == MyPack!(3, string)));
+
+    alias zipWith!(q{ A[B] },
+                   pack!(  int, double, string),
+                   pack!(dchar, string,    int)) assoc;
+    static assert(is(assoc[0] ==    int[ dchar]));
+    static assert(is(assoc[1] == double[string]));
+    static assert(is(assoc[2] == string[   int]));
+}
+
+unittest
+{
+    alias meta.pack!("int", "double", "string") types;
+    alias meta.pack!(  "i",      "x",      "s") names;
+    alias meta.zipWith!(q{ a~" "~b }, types, names) zipped;
+
+    static assert(zipped[0] == "int i");
+    static assert(zipped[1] == "double x");
+    static assert(zipped[2] == "string s");
 }
 
 
