@@ -3077,13 +3077,13 @@ unittest
 Transforms a sequence $(D seq) into $(D (fun!(seq[0]), fun!(seq[1]), ...)).
 
 Params:
- fun = Unary template or expression string that maps each element of
-       $(D seq) into another compile-time entity.  Its result may also
-       be a sequence of any length.
- seq = Sequence of compile-time entities.
+ fun = Unary template used to transform each element of $(D seq) into another
+       compile-time entity.  The result can be a sequence.
+ seq = Sequence of compile-time entities to transform.
 
 Returns:
- .
+ Sequence of the results of $(D fun) applied to each element of $(D seq) in
+ turn.
 
 Examples:
  Map types into pointers.
@@ -3094,11 +3094,9 @@ static assert(is(PP[1] == double*));
 static assert(is(PP[2] ==  void**));
 ----------
 
- Doubling elements by passing a template returning a sequence.
+ Doubling elements:
 ----------
-// Twice = (int, int, bool, bool, string, string)
-alias meta.map!(meta.bind!(meta.repeat, 2),
-                int, bool, string) Twice;
+static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
 ----------
  */
 template map(alias fun, seq...)
@@ -3118,7 +3116,7 @@ template map(alias fun, seq...)
 /// ditto
 template map(string fun, seq...)
 {
-    alias .map!(unaryT!fun, seq) map;
+    alias map!(unaryT!fun, seq) map;
 }
 
 
@@ -3128,6 +3126,27 @@ template map(string fun) { alias Seq!() map; }
 
 unittest
 {
+    static assert(map!(Id).length == 0);
+    static assert(map!(q{ a }).length == 0);
+
+    alias map!(Id, int) single;
+    static assert(is(single == Seq!int));
+
+    alias map!(q{ const A }, int) const1;
+    static assert(is(const1 == Seq!(const int)));
+
+    alias map!(q{ 2*a }, 1,2,3,4,5) double5;
+    static assert([ double5 ] == [ 2,4,6,8,10 ]);
+}
+
+unittest
+{
+    alias meta.map!(q{ A* }, int, double, void*) PP;
+    static assert(is(PP[0] ==    int*));
+    static assert(is(PP[1] == double*));
+    static assert(is(PP[2] ==  void**));
+
+    static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
 }
 
 
