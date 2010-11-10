@@ -81,37 +81,32 @@ namespace and cannot be used without the <span class="d_inlinecode"><a name="met
 <b>Authors:</b><br>Shin Fujishiro<p></p>
 
 <dl><dt><div class="d_decl">template <a name="Id"></a><u>Id</u>(E)<br>template <a name="Id"></a><u>Id</u>(alias E)</div></dt>
-<dd>Returns an alias to the passed compile-time entity <span class="d_inlinecode">E</span>.
+<dd>Makes an alias of <span class="d_inlinecode">E</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>E</td>
-<td valign=top>A compile-time entity: type, compile-time value, or any symbol that
-     has an identifier.</td></tr>
+<td valign=top>A compile-time entity: type, compile-time value, or any symbol.</td></tr>
 </table><p></p>
 <b>Example:</b><br>
-You may want to use <span class="d_inlinecode"><a name="Id"></a><u>Id</u></span> to alias a compile-time entity that
- may be a literal value.  The following example doesn't work without
- <span class="d_inlinecode"><a name="Id"></a><u>Id</u></span> since <span class="d_inlinecode">10</span> cannot be <span class="d_inlinecode">alias</span>ed.
+Literal values can't be aliased directly.  Use <span class="d_inlinecode">meta.<a name="Id"></a><u>Id</u></span> as follows:
 <pre class="d_code"><span class="d_keyword">template</span> Front(seq...)
 {
     <span class="d_keyword">alias</span> meta.<span class="d_psymbol">Id</span>!(seq[0]) Front;
 }
-<span class="d_keyword">alias</span> Front!(<span class="d_keyword">int</span>, <span class="d_keyword">short</span>) Type;  <span class="d_comment">// works
-</span><span class="d_keyword">alias</span> Front!(10, 20, 30) value; <span class="d_comment">// works
-</span></pre>
+<span class="d_keyword">alias</span> Front!(10, 20, 30) front;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(front == 10);
+</pre>
 <p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="Seq"></a><u>Seq</u>(seq...)</div></dt>
-<dd>Returns an alias to a sequence of compile-time entities <span class="d_inlinecode">seq</span>. It's
-the same thing as variadic template parameters.
+<dd>Makes a sequence of compile-time entities.  The sequence is just an alias of
+the template variadic arguments: <span class="d_inlinecode">seq</span>.
 <p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>seq</td>
-<td valign=top>Zero or more compile-time entities.</td></tr>
-</table><p></p>
-<b>Examples:</b><br>The following example makes a sequence of types <span class="d_inlinecode">Types</span> and uses its
- second element (= <span class="d_inlinecode">double</span>) to declare a variable <span class="d_inlinecode">value</span>.
-<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">Seq</span>!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string) Types;
-Types[1] value = 3.14;
+<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">Seq</span>!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string) Types;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[0] == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[1] == <span class="d_keyword">double</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types[2] == string));
 </pre>
 
  The sequence may contain compile-time expressions.  The following example
@@ -124,78 +119,53 @@ Types[1] value = 3.14;
 <p></p>
 
 </dd>
-<dt><div class="d_decl">struct <a name="Packer"></a><u>Packer</u>(seq...);
-<br>template <a name="pack"></a><u>pack</u>(seq...)</div></dt>
-<dd><span class="d_inlinecode">meta.pack!(seq)</span> packs the sequence <span class="d_inlinecode">seq</span> into a single
-compile-time entity.
+<dt><div class="d_decl">template <a name="pack"></a><u>pack</u>(seq...)</div></dt>
+<dd><span class="d_inlinecode">meta.<a name="pack"></a><u>pack</u></span> makes an atomic entity from a sequence, which is useful for
+passing multiple sequences to a template.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>seq</td>
 <td valign=top>Zero or more compile-time entities to pack.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>A compile-time entity that packs <span class="d_inlinecode">seq</span> inside itself.
-<p></p>
-
- The result can be <span class="d_inlinecode">alias</span>ed.  Sequences of packed entities can
- be iterated with the <span class="d_inlinecode">foreach</span> statement.
-<pre class="d_code"><span class="d_comment">// Iterate through sequence of sequences of compile-time values.
-</span><span class="d_keyword">alias</span> meta.pack!(1, 2, 3) A;
-<span class="d_keyword">alias</span> meta.pack!(4, 5, 6) B;
-<span class="d_keyword">alias</span> meta.pack!(7, 8, 9) C;
-
-<span class="d_keyword">foreach</span> (i, pak; meta.Seq!(A, B, C))
-{
-    <span class="d_keyword">int</span>[] seq = [ pak.expand ];
-}
+<b>Example:</b><br>
+The following code passes three separate sequences to <span class="d_inlinecode">meta.transverse</span>
+ using <span class="d_inlinecode">meta.<a name="pack"></a><u>pack</u></span>:
+<pre class="d_code"><span class="d_comment">// Query the 0-th element of each sequence.
+</span><span class="d_keyword">alias</span> meta.transverse!(0, meta.<span class="d_psymbol">pack</span>!(<span class="d_keyword">int</span>, 32),
+                          meta.<span class="d_psymbol">pack</span>!(<span class="d_keyword">double</span>, 5.0),
+                          meta.<span class="d_psymbol">pack</span>!(string, <span class="d_string">"hello."</span>)) first;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(first[0] == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(first[1] == <span class="d_keyword">double</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(first[2] == string));
 </pre>
-
 <p></p>
-<span style="color:red">BUGS:</span><br>Too much instantiations of <span class="d_inlinecode">meta.pack</span> would hit <a href="http://d.puremagic.com/issues/show_bug.cgi?id=3372">Bugzilla 3372</a>
- and cause programs go mad on Windows.  The threshold depends on the
- program, but a few thousand instantiations might be dangerous.<p></p>
 
 <dl><dt><div class="d_decl">alias <a name="expand"></a><u>expand</u>;
 </div></dt>
-<dd>Expands the packed sequence.<p></p>
+<dd>Returns the packed sequence: <span class="d_inlinecode">seq</span>.<p></p>
 
 </dd>
 <dt><div class="d_decl">size_t <a name="length"></a><u>length</u>;
 </div></dt>
-<dd>The number of compile-time entities packed in.<p></p>
-
-</dd>
-<dt><div class="d_decl">alias <a name="Tag"></a><u>Tag</u>;
-</div></dt>
-<dd>Unique type associated with the packed sequence.<p></p>
+<dd>Returns the number of entities: <span class="d_inlinecode">seq.<a name="length"></a><u>length</u></span>.<p></p>
 
 </dd>
 </dl>
 </dd>
-<dt><div class="d_decl">template <a name="isPacked"></a><u>isPacked</u>(E)<br>template <a name="isPacked"></a><u>isPacked</u>(alias E)</div></dt>
-<dd>Returns <span class="d_inlinecode"><b>true</b></span> if and only if <span class="d_inlinecode">E</span> is a packed sequence created
-with the <span class="d_inlinecode">meta.pack</span>.
-<p></p>
-<b>Example:</b><br>
-<span class="d_inlinecode">meta.zip</span> requires its arguments should be a sequence of packed
- sequences using <span class="d_inlinecode">meta.<a name="isPacked"></a><u>isPacked</u></span>.
-<pre class="d_code"><span class="d_keyword">template</span> zip(seqs...)
-    <span class="d_keyword">if</span> (meta.all!(meta.<span class="d_psymbol">isPacked</span>, seqs))
-{
-    <span class="d_comment">// ... implementation ...
-</span>}
-</pre>
-<p></p>
-
-</dd>
-<dt><div class="d_decl">struct <a name="Tag"></a><u>Tag</u>(entities...);
-</div></dt>
-<dd><b>TODO:</b><br>
-doc<p></p>
-
-</dd>
 <dt><div class="d_decl">template <a name="isSame"></a><u>isSame</u>(A,B)<br>template <a name="isSame"></a><u>isSame</u>(A,alias B) if (!isType!(B))<br>template <a name="isSame"></a><u>isSame</u>(alias A,B) if (!isType!(A))<br>template <a name="isSame"></a><u>isSame</u>(alias A,alias B) if (!isType!(A) &amp;&amp; !isType!(B))</div></dt>
-<dd>Determines if <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are the same compile-time entities
-or not.  <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are considered the same if their mangled
-names as template arguments coincide with each other.
+<dd>Determines if <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are the same entities.
+<p></p>
+<span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are compared in terms of their mangled names.  So, a
+literal value <span class="d_inlinecode">10</span> and a CTFE capable property function returning <span class="d_inlinecode">10</span>
+are considered different; literals are values and properties are symbols.
+<pre class="d_code"><span class="d_keyword">struct</span> S
+{
+    <span class="d_keyword">static</span> @property <span class="d_keyword">int</span> property() { <span class="d_keyword">return</span> 10; }
+}
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( meta.<span class="d_psymbol">isSame</span>!(10, 10));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!meta.<span class="d_psymbol">isSame</span>!(S.property, 10));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( meta.<span class="d_psymbol">isSame</span>!(S.property, S.property));
+</pre>
+
 <p></p>
 <b>Returns:</b><br><span class="d_inlinecode"><b>true</b></span> if and only if <span class="d_inlinecode">A</span> and <span class="d_inlinecode">B</span> are the same entity.
 
@@ -221,12 +191,10 @@ Comparing various entities.
 
 </dd>
 <dt><div class="d_decl">template <a name="isSame"></a><u>isSame</u>(A)<br>template <a name="isSame"></a><u>isSame</u>(alias A)</div></dt>
-<dd>Convenience overloads.  If the second argument <span class="d_inlinecode">B</span> is omitted,
-<span class="d_inlinecode">meta.<a name="isSame"></a><u>isSame</u>!A</span> binds <span class="d_inlinecode">A</span> to its own first parameter and returns a
-partially applied template.
+<dd>These overloads serve partial application of <span class="d_inlinecode">meta.<a name="isSame"></a><u>isSame</u></span>.
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_comment">// Bind double as A.
+<pre class="d_code"><span class="d_comment">// Bind double as the first argument.
 </span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">isSame</span>!<span class="d_keyword">double</span> isDouble;
 
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isDouble!<span class="d_keyword">double</span>);    <span class="d_comment">// meta.isSame!(double, double)
@@ -236,17 +204,46 @@ partially applied template.
 
 </dd>
 <dt><div class="d_decl">template <a name="isType"></a><u>isType</u>(E)<br>template <a name="isType"></a><u>isType</u>(alias E)</div></dt>
-<dd>Returns <span class="d_inlinecode"><b>true</b></span> if and only if a compile-time entity <span class="d_inlinecode">E</span> is a type.
+<dd>Returns <span class="d_inlinecode"><b>true</b></span> if and only if <span class="d_inlinecode">E</span> is a type.
 <p></p>
 <b>Example:</b><br>
 <pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>, <span class="d_string">"x"</span>,
-             <span class="d_keyword">double</span>, <span class="d_string">"y"</span>,
-             string, <span class="d_string">"z"</span>) mixed;
+                <span class="d_keyword">double</span>, <span class="d_string">"y"</span>,
+                string, <span class="d_string">"z"</span>) Mixed;
 
-<span class="d_comment">// Filter out the types.
-</span><span class="d_keyword">alias</span> meta.filter!(meta.<span class="d_psymbol">isType</span>, mixed) Types;
+<span class="d_keyword">alias</span> meta.filter!(meta.<span class="d_psymbol">isType</span>, Mixed) Types;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Types == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string)));
 </pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="isValue"></a><u>isValue</u>(E)<br>template <a name="isValue"></a><u>isValue</u>(alias E)</div></dt>
+<dd>Returns <span class="d_inlinecode"><b>true</b></span> if and only if <span class="d_inlinecode">E</span> has a compile-time value.  Literals,
+constants and CTFE-able property functions would pass the test.
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">template</span> increment(<span class="d_keyword">alias</span> value) <span class="d_keyword">if</span> (meta.<span class="d_psymbol">isValue</span>!value)
+{
+    <span class="d_keyword">enum</span> increment = value + 1;
+}
+<span class="d_keyword">enum</span> a = increment!10;
+<span class="d_keyword">enum</span> b = increment!increment;   <span class="d_comment">// Error: negates the constraint
+</span></pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="isValue"></a><u>isValue</u>(T,E)<br>template <a name="isValue"></a><u>isValue</u>(T,alias E)</div></dt>
+<dd>Returns <span class="d_inlinecode"><b>true</b></span> if and only if <span class="d_inlinecode">E</span> has a compile-time value implicitly
+convertible to type <span class="d_inlinecode">T</span>.
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">template</span> increment(<span class="d_keyword">alias</span> value) <span class="d_keyword">if</span> (meta.<span class="d_psymbol">isValue</span>!(<span class="d_keyword">long</span>, value))
+{
+    <span class="d_keyword">enum</span> increment = value + 1;
+}
+<span class="d_keyword">enum</span> a = increment!10;
+<span class="d_keyword">enum</span> b = increment!<span class="d_string">"me"</span>;    <span class="d_comment">// Error: nonconvertible to long
+</span></pre>
 <p></p>
 
 </dd>
@@ -475,7 +472,7 @@ rightmost parameters.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="fix"></a><u>fix</u>(alias templat,args...)</div></dt>
+<dt><div class="d_decl">template <a name="delay"></a><u>delay</u>(alias templat,args...)</div></dt>
 <dd>Binds <span class="d_inlinecode">args</span> to all the parameters of <span class="d_inlinecode">templat</span>.  Generated template
 will instantiate <span class="d_inlinecode">templat</span> with just the bound arguments.
 <p></p>
@@ -489,16 +486,16 @@ will instantiate <span class="d_inlinecode">templat</span> with just the bound a
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">alias</span> meta.fixed!(meta.Id, <span class="d_keyword">int</span>) intFixed;
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!() == <span class="d_keyword">int</span>));
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!(<span class="d_keyword">void</span>) == <span class="d_keyword">int</span>));
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(intFixed!(1,2,3) == <span class="d_keyword">int</span>));
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">delay</span>!(meta.Id, <span class="d_keyword">int</span>) Int;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Int!() == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Int!(<span class="d_keyword">void</span>) == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Int!(1,2,3) == <span class="d_keyword">int</span>));
 </pre>
 
- Using fixed template for a fallback case of <span class="d_inlinecode">meta.guard</span>:
+ Using a delayed template for a fallback case of <span class="d_inlinecode">meta.guard</span>:
 <pre class="d_code"><span class="d_keyword">struct</span> Error;
 
-<span class="d_keyword">alias</span> meta.guard!(<span class="d_string">q{ A[] }</span>, meta.<span class="d_psymbol">fix</span>!(meta.Id, Error)) Array;
+<span class="d_keyword">alias</span> meta.guard!(<span class="d_string">q{ A[] }</span>, meta.<span class="d_psymbol">delay</span>!(meta.Id, Error)) Array;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Array!<span class="d_keyword">int</span> == <span class="d_keyword">int</span>[]));
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Array!100 == Error));
 </pre>
@@ -597,8 +594,8 @@ remaining predicates.
 
 </dd>
 <dt><div class="d_decl">template <a name="compose"></a><u>compose</u>(templates...) if (templates.length &gt; 0)</div></dt>
-<dd><span class="d_inlinecode"><a name="compose"></a><u>compose</u>!(t1, t2, ..., tn)</span> returns a variadic template that in turn
-instantiates the passed in templates in a chaining way:
+<dd><span class="d_inlinecode">meta.<a name="compose"></a><u>compose</u>!(t1, t2, ..., tn)</span> returns a variadic template that in
+turn instantiates the passed in templates in a chaining way:
 <pre class="d_code"><span class="d_keyword">template</span> composition(args...)
 {
     <span class="d_keyword">alias</span> t1!(t2!( ... tn!(args) ... )) composition;
@@ -661,11 +658,11 @@ as follows:
 
 </dd>
 <dt><div class="d_decl">template <a name="expand"></a><u>expand</u>(alias arr)</div></dt>
-<dd>Expands a compile-time array to a sequence of the elements.
+<dd>Expands a compile-time array into a sequence of the elements.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>arr</td>
 <td valign=top>Compile-time expression of an array.  The array can be dynamic or
-       static, but its length and elements must be known at compile-time.</td></tr>
+       static.  The length and elements must be known at compile-time.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Sequence of the elements of <span class="d_inlinecode">arr</span>.
 
@@ -673,8 +670,7 @@ as follows:
 <b>Example:</b><br>
 Using <span class="d_inlinecode">meta.<a name="expand"></a><u>expand</u></span> to apply a meta algorithm <span class="d_inlinecode">meta.map</span> on
  elements of a compile-time array.
-<pre class="d_code"><span class="d_comment">// Array of function names.
-</span><span class="d_keyword">enum</span> functions = [ <span class="d_string">"fun"</span>, <span class="d_string">"gun"</span>, <span class="d_string">"hun"</span> ];
+<pre class="d_code"><span class="d_keyword">enum</span> functions = [ <span class="d_string">"fun"</span>, <span class="d_string">"gun"</span>, <span class="d_string">"hun"</span> ];
 
 <span class="d_comment">// Use meta.map to transform the function names into signatures with
 </span><span class="d_comment">// help of meta.expand.
@@ -685,26 +681,10 @@ Using <span class="d_inlinecode">meta.<a name="expand"></a><u>expand</u></span> 
                         enum _ = "auto "~ a ~"(Args...)(Args args)";
                     }</span>),
                 meta.<span class="d_psymbol">expand</span>!functions) signatures;
-</pre>
-<p></p>
 
-</dd>
-<dt><div class="d_decl">template <a name="expand"></a><u>expand</u>(Arr : Arr[n],size_t n)</div></dt>
-<dd>Expands a static array type into a sequence of its element types.
-<p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>Arr</td>
-<td valign=top>Type of a static array.</td></tr>
-<tr><td valign=top>n</td>
-<td valign=top>The length of the static array; it's automatically deduced by the
-       language when instantiating this template.</td></tr>
-</table><p></p>
-<b>Returns:</b><br>The element type of <span class="d_inlinecode">Arr</span> repeated <span class="d_inlinecode">n</span> times.  The empty sequence is
- returned if <span class="d_inlinecode">n == 0</span>.
-
-<p></p>
-<b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">expand</span>!(<span class="d_keyword">int</span>[4]) int4;
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Tag!int4 == Tag!(<span class="d_keyword">int</span>, <span class="d_keyword">int</span>, <span class="d_keyword">int</span>, <span class="d_keyword">int</span>)));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(signatures[0] == <span class="d_string">"auto fun(Args...)(Args args)"</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(signatures[1] == <span class="d_string">"auto gun(Args...)(Args args)"</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(signatures[2] == <span class="d_string">"auto hun(Args...)(Args args)"</span>);
 </pre>
 <p></p>
 
@@ -714,53 +694,76 @@ Using <span class="d_inlinecode">meta.<a name="expand"></a><u>expand</u></span> 
 specified <span class="d_inlinecode">step</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>beg</td>
-<td valign=top>Compile-time numeral value (<span class="d_inlinecode">0</span> if not specified).  The
-        resulting sequence starts with <span class="d_inlinecode">beg</span> if not empty.</td></tr>
+<td valign=top>Compile-time numeral value (<span class="d_inlinecode">0</span> if not specified).  The generated
+        sequence starts with <span class="d_inlinecode">beg</span> if not empty.</td></tr>
 <tr><td valign=top>end</td>
 <td valign=top>Compile-time numeral value.  The resulting sequence stops before
-        <span class="d_inlinecode">end</span> and never contain it.</td></tr>
+        <span class="d_inlinecode">end</span> and never contain this value.</td></tr>
 <tr><td valign=top>step</td>
-<td valign=top>Compile-time numeral value (<span class="d_inlinecode">1</span> if not specified).  The
-        resulting sequence increases or decreases by <span class="d_inlinecode">step</span>.  The
-        step may not be zero.</td></tr>
+<td valign=top>Compile-time numeral value (<span class="d_inlinecode">1</span> if not specified).  The generated
+        sequence increases or decreases by <span class="d_inlinecode">step</span>.  This value may not
+        be zero or NaN.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Sequence of compile-time numbers starting from <span class="d_inlinecode">beg</span> to <span class="d_inlinecode">end</span>,
- increasing/decreasing by <span class="d_inlinecode">step</span>.  The type of each element is the
- common type of <span class="d_inlinecode">beg</span> and <span class="d_inlinecode">end</span>.
+ increasing/decreasing by <span class="d_inlinecode">step</span>.  The generated sequence is empty if
+ <span class="d_inlinecode">beg</span> is ahead of <span class="d_inlinecode">end</span> in terms of the <span class="d_inlinecode">step</span>'s direction.
 
 <p></p>
-<b>Examples:</b><br>Using <span class="d_inlinecode">meta.<a name="iota"></a><u>iota</u></span> to fill a constant array:
-<pre class="d_code"><span class="d_keyword">static</span> <span class="d_keyword">immutable</span> <span class="d_keyword">int</span>[] sequence = [ meta.<span class="d_psymbol">iota</span>!(9, 99, 9) ];
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(sequence == [ 9, 18, 27, 36, 45, 54, 63, 72, 81, 90 ]);
+<b>Examples:</b><br>Filling array elements using <span class="d_inlinecode">meta.<a name="iota"></a><u>iota</u></span>:
+<pre class="d_code"><span class="d_keyword">static</span> Base64Chars = <span class="d_keyword">cast</span>(<span class="d_keyword">immutable</span> <span class="d_keyword">char</span>[64])
+    [
+        meta.<span class="d_psymbol">iota</span>!('A', 'Z'+1),
+        meta.<span class="d_psymbol">iota</span>!('a', 'z'+1),
+        meta.<span class="d_psymbol">iota</span>!('0', '9'+1), '+', '/'
+    ];
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(Base64Chars[16] == 'Q');
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(Base64Chars[32] == 'g');
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(Base64Chars[62] == '+');
 </pre>
 
- Next example shows a static foreach.  The variable <span class="d_inlinecode">i</span> in the
- following code holds a compile-time value.
-<pre class="d_code"><span class="d_comment">// Declare arrays of int[4], int[5], int[6] and int[7].
-</span><span class="d_keyword">foreach</span> (i; meta.<span class="d_psymbol">iota</span>!(4, 8))
+ So-called static foreach:
+<pre class="d_code"><span class="d_keyword">void</span> shift(Args...)(<span class="d_keyword">ref</span> Args args)
 {
-    <span class="d_keyword">int</span>[i] array;
+    <span class="d_keyword">foreach</span> (i; meta.<span class="d_psymbol">iota</span>!(1, +args.length))
+    {
+        args[i - 1] = args[i];
+    }
+    args[$ - 1] = args[$ - 1].init;
 }
+
+<span class="d_keyword">double</span> a;
+<span class="d_keyword">int</span>    b = 10;
+<span class="d_keyword">ushort</span> c = 20;
+
+shift(a, b, c);
+<span class="d_keyword">assert</span>(a == 10);
+<span class="d_keyword">assert</span>(b == 20);
+<span class="d_keyword">assert</span>(c ==  0);
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="iterate"></a><u>iterate</u>(size_t n,alias fun,seed...)</div></dt>
-<dd>TODO
+<dt><div class="d_decl">template <a name="recur"></a><u>recur</u>(size_t n,alias fun,Seed...)</div></dt>
+<dd>Generates a sequence by repeatedly applying <span class="d_inlinecode">fun</span> on generated elements,
+and takes the first <span class="d_inlinecode">n</span> results:
+<pre class="d_code">meta.<span class="d_psymbol">recur</span>!(n, fun, Seed) = (Seed, fun!Seed, fun!(fun!Seed), ...)
+</pre>
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>n</td>
-<td valign=top>.</td></tr>
+<td valign=top>Number of recurrences.  Specify zero to get the empty sequence.</td></tr>
 <tr><td valign=top>fun</td>
-<td valign=top>.</td></tr>
-<tr><td valign=top>seed</td>
-<td valign=top>.</td></tr>
+<td valign=top>Recurrence template that computes the next state.  The state can be
+        any sequence which can be passed to <span class="d_inlinecode">fun</span> itself.</td></tr>
+<tr><td valign=top>Seed</td>
+<td valign=top>Initial state.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence composed of <span class="d_inlinecode">Seed</span> followed by <span class="d_inlinecode">fun!Seed</span>, <span class="d_inlinecode">fun!(fun!Seed)</span>,
+ ... etc., ending with the <span class="d_inlinecode">n-1</span> repeated application of <span class="d_inlinecode">fun</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_comment">// Pointers = (int, int*, int**, int***)
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">iterate</span>!(4, <span class="d_string">q{ A* }</span>, <span class="d_keyword">int</span>) Pointers;
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">recur</span>!(4, <span class="d_string">q{ A* }</span>, <span class="d_keyword">int</span>) Pointers;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Pointers == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">int</span>*, <span class="d_keyword">int</span>**, <span class="d_keyword">int</span>***)));
 </pre>
 <p></p>
 
@@ -848,8 +851,7 @@ Filling a continuous region in a table with specific values.
 <b>Parameters:</b><table class=parms><tr><td valign=top>seq</td>
 <td valign=top>Sequence to reverse.</td></tr>
 </table><p></p>
-<b>Returns:</b><br><span class="d_inlinecode">seq</span> in the reverse order.  The empty sequence is returned if <span class="d_inlinecode">seq</span>
- is empty.
+<b>Returns:</b><br><span class="d_inlinecode">seq</span> in the reverse order.
 
 <p></p>
 <b>Example:</b><br>
@@ -860,174 +862,173 @@ Filling a continuous region in a table with specific values.
 
 </dd>
 <dt><div class="d_decl">template <a name="rotate"></a><u>rotate</u>(sizediff_t n,seq...)</div></dt>
-<dd>Rotates <span class="d_inlinecode">seq</span> by <span class="d_inlinecode">n</span>.  The result is, conceptually,
-<span class="d_inlinecode">(seq[n .. $], seq[0 .. n])</span>.
+<dd>Rotates <span class="d_inlinecode">seq</span> by <span class="d_inlinecode">n</span>.  If <span class="d_inlinecode">n</span> is positive and less than <span class="d_inlinecode">seq</span>,
+the result is <span class="d_inlinecode">(seq[n .. $], seq[0 .. n])</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>n</td>
 <td valign=top>The amount of rotation.  The sign determines the direction:
        positive for left rotation and negative for right rotation.
-       This parameter can be zero or larger than <span class="d_inlinecode">seq.length</span>.</td></tr>
+       This argument can be zero or larger than <span class="d_inlinecode">seq.length</span>.</td></tr>
 <tr><td valign=top>seq</td>
 <td valign=top>Sequence to rotate.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> rotated by <span class="d_inlinecode">n</span>.  The empty sequence is returned
- if <span class="d_inlinecode">seq</span> is empty.
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> rotated by <span class="d_inlinecode">n</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">rotate</span>!(+1, <span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string) rotL;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">rotate</span>!(-1, <span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string) rotR;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.tag!rotL == meta.tag!(<span class="d_keyword">double</span>, string, <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.tag!rotR == meta.tag!(string, <span class="d_keyword">int</span>, <span class="d_keyword">double</span>));
 </pre>
 <p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="stride"></a><u>stride</u>(size_t n,seq...) if (n &gt;= 1)</div></dt>
-<dd>Picks up elements of sequence with stride <span class="d_inlinecode">n</span>.
+<dd>Gets the elements of sequence with stride <span class="d_inlinecode">n</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>n</td>
-<td valign=top>Stride width.  <span class="d_inlinecode">n</span> may not be zero.</td></tr>
+<td valign=top>Stride width.  <span class="d_inlinecode">n</span> must not be zero.</td></tr>
 <tr><td valign=top>seq</td>
 <td valign=top>Sequence to stride.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Sequence of <span class="d_inlinecode">0,n,2n,...</span>-th elements of the given sequence:
- <span class="d_inlinecode">(seq[0], seq[n], seq[2*n], ...)</span>.
+ <span class="d_inlinecode">(seq[0], seq[n], seq[2*n], ...)</span>.  The empty sequence is returned if the
+ given sequence <span class="d_inlinecode">seq</span> is empty.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>, <span class="d_string">"index"</span>, 10,
+                <span class="d_keyword">double</span>, <span class="d_string">"number"</span>, 5.0) seq;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">stride</span>!(3, seq        ) Types;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">stride</span>!(3, seq[1 .. $]) names;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.tag!Types == meta.tag!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.tag!names == meta.tag!(<span class="d_string">"index"</span>, <span class="d_string">"number"</span>));
 </pre>
 <p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="segment"></a><u>segment</u>(size_t n,seq...) if (n &gt;= 1)</div></dt>
-<dd>Splits sequence <span class="d_inlinecode">seq</span> into segments of length <span class="d_inlinecode">n</span>.
+<dd>Splits sequence <span class="d_inlinecode">seq</span> into segments of the same length <span class="d_inlinecode">n</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>n</td>
-<td valign=top>The size of each segment. <span class="d_inlinecode">n</span> may not be zero.</td></tr>
+<td valign=top>The size of each segment.  <span class="d_inlinecode">n</span> must not be zero.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence to segment.</td></tr>
+<td valign=top>Sequence to split.  The sequence can have arbitrary length.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence of packed segments of length <span class="d_inlinecode">n</span>.  The last segment can
- be shorter than <span class="d_inlinecode">n</span> if <span class="d_inlinecode">seq.length</span> is not a multiple of <span class="d_inlinecode">n</span>.
+<b>Returns:</b><br>Sequence of packed segments of length <span class="d_inlinecode">n</span>.  Each <a name="segment"></a><u>segment</u> is packed using
+ <span class="d_inlinecode">meta.pack</span>; use the <span class="d_inlinecode">expand</span> property to yield the contents.
+<p></p>
+
+ The last segment can be shorter than <span class="d_inlinecode">n</span> if <span class="d_inlinecode">seq.length</span> is not an
+ exact multiple of <span class="d_inlinecode">n</span>.  The empty sequence is returned if <span class="d_inlinecode">seq</span> is
+ empty.
 
 <p></p>
 <b>Example:</b><br>
 <span class="d_inlinecode">meta.<a name="segment"></a><u>segment</u></span> would be useful to scan simple patterns out of
  template parameters or other sequences.
-<pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>,    <span class="d_string">"x"</span>, 10,
-                <span class="d_keyword">double</span>, <span class="d_string">"y"</span>, 20) config;
+<pre class="d_code"><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">int</span>, <span class="d_string">"index"</span>, 10,
+                <span class="d_keyword">double</span>, <span class="d_string">"number"</span>, 5.0) seq;
 
-<span class="d_keyword">alias</span> meta.<span class="d_psymbol">segment</span>!(3, config) patterns;
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(patterns[0], meta.pack!(<span class="d_keyword">int</span>,    <span class="d_string">"x"</span>, 10)));
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(patterns[1], meta.pack!(<span class="d_keyword">double</span>, <span class="d_string">"y"</span>, 20)));
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">segment</span>!(3, seq) patterns;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(patterns[0], meta.pack!(<span class="d_keyword">int</span>, <span class="d_string">"index"</span>, 10)));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(patterns[1], meta.pack!(<span class="d_keyword">double</span>, <span class="d_string">"number"</span>, 5.0)));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="segmentWith"></a><u>segmentWith</u>(alias fun,size_t n,seq...) if (n &gt;= 1)<br>template <a name="segmentWith"></a><u>segmentWith</u>(string fun,size_t n,seq...) if (n &gt;= 1)</div></dt>
-<dd>Generalization of the <span class="d_inlinecode">meta.segment</span>.  It passes each segment to
-<span class="d_inlinecode">fun</span> instead of the <span class="d_inlinecode">meta.pack</span>.
+<dt><div class="d_decl">template <a name="segmentWith"></a><u>segmentWith</u>(alias fun,size_t n,seq...) if (n == 1)<br>template <a name="segmentWith"></a><u>segmentWith</u>(alias fun,size_t n,seq...) if (n &gt; 1)</div></dt>
+<dd>Generalization of <span class="d_inlinecode">meta.segment</span> passing each segment to <span class="d_inlinecode">fun</span> instead
+of <span class="d_inlinecode">meta.pack</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top><span class="d_inlinecode">n</span>-ary template.</td></tr>
+<td valign=top><span class="d_inlinecode">n</span>-ary template that transforms each segment.</td></tr>
 <tr><td valign=top>n</td>
-<td valign=top>The size of each segment. <span class="d_inlinecode">n</span> may not be zero.</td></tr>
+<td valign=top>The size of each segment.  <span class="d_inlinecode">n</span> must not be zero.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence to segment.</td></tr>
+<td valign=top>Sequence to process.</td></tr>
 </table><p></p>
 <b>Returns:</b><br>Sequence of the results of <span class="d_inlinecode">fun</span> applied to each segment.
 
 <p></p>
 <b>Example:</b><br>
-<p></p>
-
-</dd>
-<dt><div class="d_decl">template <a name="interleave"></a><u>interleave</u>(seqs...)</div></dt>
-<dd>TODO
-<p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>seqs</td>
-<td valign=top></td></tr>
-</table><p></p>
-<b>Returns:</b><br>.
-
-<p></p>
-<b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">segmentWith</span>!(<span class="d_string">q{ B[A] }</span>, 2,
+                        string, <span class="d_keyword">int</span>, string, <span class="d_keyword">double</span>) result;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(result[0] ==    <span class="d_keyword">int</span>[string]));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(result[1] == <span class="d_keyword">double</span>[string]));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="transverse"></a><u>transverse</u>(size_t i,seqs...) if (all!(and!(isPacked,isLongerThan!(i)),seqs))</div></dt>
-<dd>.
+<dt><div class="d_decl">template <a name="transverse"></a><u>transverse</u>(size_t i,seqs...) if (isTransversable!(i,seqs))</div></dt>
+<dd>Given sequence of packed sequences, generates a sequence transversing
+the <span class="d_inlinecode">i</span>-th element of each of the sequences.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>i</td>
-<td valign=top>.</td></tr>
+<td valign=top>Valid index for each packed sequence in <span class="d_inlinecode">seqs</span>.</td></tr>
 <tr><td valign=top>seqs</td>
-<td valign=top>.</td></tr>
+<td valign=top>Sequence of packed sequences.  Each packed sequence must have a
+        property <span class="d_inlinecode">expand</span> that yields a sequence and its length must be
+        greater than <span class="d_inlinecode">i</span>.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence composed of the <span class="d_inlinecode">i</span>-th element of each of the given sequences.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">transverse</span>!(1, meta.pack!(<span class="d_keyword">int</span>, 255),
+                          meta.pack!(<span class="d_keyword">double</span>, 7.5),
+                          meta.pack!(string, <span class="d_string">"yo"</span>)) second;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.tag!second == meta.tag!(255, 7.5, <span class="d_string">"yo"</span>));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="zip"></a><u>zip</u>(seqs...) if (all!(isPacked,seqs))</div></dt>
-<dd>.
+<dt><div class="d_decl">template <a name="zip"></a><u>zip</u>(seqs...) if (isZippable!(seqs))</div></dt>
+<dd>Generates a sequence iterating given sequences in lockstep.  The iteration
+stops on encountering the end of the shortest sequence.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>seqs</td>
-<td valign=top>Sequence of packed sequences.</td></tr>
+<td valign=top>Sequence of packed sequences.  Each packed sequence must have a
+        property <span class="d_inlinecode">expand</span> that yields a sequence.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence of the transversals of <span class="d_inlinecode">seqs</span>, each of which is the result of
+ <span class="d_inlinecode">meta.transversal</span> packed in a <span class="d_inlinecode">meta.pack</span>.  The empty sequence is
+ returned if <span class="d_inlinecode">seqs</span> is empty or any of the sequences is empty.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">zip</span>!(meta.pack!(<span class="d_keyword">int</span>, 255),
+                meta.pack!(<span class="d_keyword">double</span>, 7.5),
+                meta.pack!(string, <span class="d_string">"yo"</span>)) zipped;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(zipped[0], meta.pack!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string)));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(meta.isSame!(zipped[1], meta.pack!(255, 7.5, <span class="d_string">"yo"</span>)));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="zipWith"></a><u>zipWith</u>(alias fun,seqs...) if (all!(isPacked,seqs))<br>template <a name="zipWith"></a><u>zipWith</u>(string fun,seqs...) if (all!(isPacked,seqs))</div></dt>
-<dd>Generalization of the <span class="d_inlinecode">meta.zip</span>.  It zippes elements with <span class="d_inlinecode">fun</span>
-instead of the <span class="d_inlinecode">meta.pack</span>.
+<dt><div class="d_decl">template <a name="zipWith"></a><u>zipWith</u>(alias fun,seqs...) if (isZippable!(seqs))</div></dt>
+<dd>Generalization of <span class="d_inlinecode">meta.zip</span> passing each transversal to <span class="d_inlinecode">fun</span>, instead
+of packing with <span class="d_inlinecode">meta.pack</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Template or expression string of arity <span class="d_inlinecode">seqs.length</span>.</td></tr>
+<td valign=top>Template of arity <span class="d_inlinecode">seqs.length</span> that transforms each transversal.</td></tr>
 <tr><td valign=top>seqs</td>
 <td valign=top>Sequence of packed sequences.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence of the results of <span class="d_inlinecode">fun</span> applied to each transversal of <span class="d_inlinecode">seqs</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
-</pre>
-<p></p>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.pack!(<span class="d_string">"int"</span>, <span class="d_string">"double"</span>, <span class="d_string">"string"</span>) types;
+<span class="d_keyword">alias</span> meta.pack!(  <span class="d_string">"i"</span>,      <span class="d_string">"x"</span>,      <span class="d_string">"s"</span>) names;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">zipWith</span>!(<span class="d_string">q{ a~" "~b }</span>, types, names) zipped;
 
-</dd>
-<dt><div class="d_decl">template <a name="cartesian"></a><u>cartesian</u>(seqs...) if (seqs.length &gt;= 1 &amp;&amp; all!(isPacked,seqs))</div></dt>
-<dd>Generates a sequence of the cartesian product of packed sequences.
-<p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>seqs</td>
-<td valign=top>One or more packed sequences.</td></tr>
-</table><p></p>
-<b>Returns:</b><br>Sequence of packed sequences, each of which is composed of a combination
- of the elements from the input sequences.  The empty sequence is returned
- if at least one sequence in <span class="d_inlinecode">seqs</span> is empty.
-
-<p></p>
-<b>Example:</b><br>
-<pre class="d_code"><span class="d_comment">// Test nine cases of floating-point to string conversions.
-</span><span class="d_keyword">foreach</span> (Comb; meta.<span class="d_psymbol">cartesian</span>!(meta.pack!(<span class="d_keyword">float</span>, <span class="d_keyword">double</span>, <span class="d_keyword">real</span>),
-                               meta.pack!(string, wstring, dstring)))
-{
-    <span class="d_keyword">alias</span> Comb.expand[0] Source;
-    <span class="d_keyword">alias</span> Comb.expand[1] Target;
-
-    Source value = 0;
-    <span class="d_keyword">assert</span>(std.conv.to!Target(value) == <span class="d_string">"0"</span>);
-}
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(zipped[0] == <span class="d_string">"int i"</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(zipped[1] == <span class="d_string">"double x"</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(zipped[2] == <span class="d_string">"string s"</span>);
 </pre>
 <p></p>
 
@@ -1547,14 +1548,6 @@ These templates would be useful in template constraints:
 </dd>
 <dt><div class="d_decl">template <a name="setUnion"></a><u>setUnion</u>(alias A,alias B)</div></dt>
 <dd>Set union.<p></p>
-
-</dd>
-<dt><div class="d_decl">template <a name="setDifference"></a><u>setDifference</u>(alias A,alias B)</div></dt>
-<dd>Set difference.<p></p>
-
-</dd>
-<dt><div class="d_decl">template <a name="setSymmetricDifference"></a><u>setSymmetricDifference</u>(alias A,alias B)</div></dt>
-<dd>Set symmetric difference.<p></p>
 
 </dd>
 </dl>
