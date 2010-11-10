@@ -537,7 +537,11 @@ template isValue(alias E)
 {
     static if (is(typeof(E) T) && !is(T == void))
     {
-        enum isValue = __traits(compiles, Id!([ E ]));
+        // NOTE: Some errors are gagged only inside static-if.
+        static if (__traits(compiles, Id!([ E ])))
+            enum isValue = true;
+        else
+            enum isValue = false;
     }
     else
     {
@@ -579,6 +583,9 @@ unittest
     static assert(!isValue!int);
     static assert(!isValue!S);
     static assert(!isValue!isValue);
+
+    int runtimeVar;
+    static assert(!isValue!(runtimeVar));
 }
 
 unittest
