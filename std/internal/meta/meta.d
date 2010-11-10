@@ -604,6 +604,59 @@ unittest
 
 
 
+/**
+Returns $(D true) if and only if $(D E) has a compile-time value implicitly
+convertible to type $(D T).
+
+Example:
+----------
+template increment(alias value) if (meta.isValue!(long, value))
+{
+    enum increment = value + 1;
+}
+enum a = increment!10;
+enum b = increment!"me";    // Error: nonconvertible to long
+----------
+ */
+template isValue(T, E)
+{
+    enum isValue = false;
+}
+
+/// ditto
+template isValue(T, alias E)
+{
+    enum isValue = is(typeof(E) : T) && isValue!E;
+}
+
+
+unittest
+{
+    static immutable string immstr = "abc";
+    string varstr;
+    static assert( isValue!(string, ""));
+    static assert( isValue!(string, immstr));
+    static assert(!isValue!(string, varstr));
+    static assert(!isValue!(string, 65536));
+    static assert(!isValue!(string, string));
+}
+
+unittest
+{
+    struct Scope
+    {
+        template increment(alias value) if (meta.isValue!(long, value))
+        {
+            enum increment = value + 1;
+        }
+    }
+    alias Scope.increment increment;
+    static assert( __traits(compiles, increment!10));
+    static assert(!__traits(compiles, increment!"me"));
+}
+
+
+
 /* undocumented for now */
 template metaComp(entities...) if (entities.length == 2)
 {
