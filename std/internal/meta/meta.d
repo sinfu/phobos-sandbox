@@ -190,6 +190,15 @@ template pack(seq...)
     enum size_t length = seq.length;
 
 
+    /**
+     * Extracts the $(D i)-th element of the packed sequence.
+     */
+    template at(size_t i) if (i < length)
+    {
+        alias Id!(seq[i]) at;
+    }
+
+
     /* undocumented (used by meta.tag) */
     struct Tag;
 }
