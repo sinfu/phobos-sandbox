@@ -3309,7 +3309,7 @@ unittest
 
 
 /**
-Creates a sequence only containing elements satisfying $(D pred).
+Creates a sequence only containing elements of $(D seq) satisfying $(D pred).
 
 Params:
  pred = Unary predicate template that decides whether or not to include an
