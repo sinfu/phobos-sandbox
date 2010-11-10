@@ -3314,7 +3314,7 @@ Creates a sequence only containing elements of $(D seq) satisfying $(D pred).
 Params:
  pred = Unary predicate template that decides whether or not to include an
         element in the resulting sequence.
-  seq = Sequence to filter.
+  seq = Sequence to _filter.
 
 Returns:
  Sequence only containing elements of $(D seq) for each of which $(D pred)
@@ -3362,7 +3362,7 @@ Removes all occurrences of $(D E) in $(D seq) if any.  Each occurrence is
 tested in terms of $(D meta.isSame).
 
 Params:
-   E = Compile-time entity to remove.
+   E = Compile-time entity to _remove.
  seq = Target sequence.
 
 Returns:
