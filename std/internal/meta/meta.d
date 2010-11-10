@@ -2006,6 +2006,19 @@ Returns:
  $(D beg) is ahead of $(D end) in terms of the $(D step)'s direction.
 
 Examples:
+ Filling array elements using $(D meta.iota):
+----------
+static Base64Chars = cast(immutable char[64])
+    [
+        meta.iota!('A', 'Z'+1),
+        meta.iota!('a', 'z'+1),
+        meta.iota!('0', '9'+1), '+', '/'
+    ];
+static assert(Base64Chars[16] == 'Q');
+static assert(Base64Chars[32] == 'g');
+static assert(Base64Chars[62] == '+');
+----------
+
  So-called static foreach:
 ----------
 void shift(Args...)(ref Args args)
@@ -2027,19 +2040,6 @@ shift(a, b, c);
 assert(a == 10);
 assert(b == 20);
 assert(c ==  0);
-----------
-
- Filling array elements using $(D meta.iota):
-----------
-static Base64Chars = cast(immutable char[64])
-    [
-        meta.iota!('A', 'Z'+1),
-        meta.iota!('a', 'z'+1),
-        meta.iota!('0', '9'+1), '+', '/'
-    ];
-static assert(Base64Chars[16] == 'Q');
-static assert(Base64Chars[32] == 'g');
-static assert(Base64Chars[62] == '+');
 ----------
  */
 template iota(alias beg, alias end, alias step) if (step <> 0)
@@ -2067,6 +2067,19 @@ template iota(alias end)
 }
 
 
+unittest    // doc example (array filling)
+{
+    static Base64Chars = cast(immutable char[64])
+        [
+            meta.iota!('A', 'Z'+1),
+            meta.iota!('a', 'z'+1),
+            meta.iota!('0', '9'+1), '+', '/'
+        ];
+    static assert(Base64Chars[16] == 'Q');
+    static assert(Base64Chars[32] == 'g');
+    static assert(Base64Chars[62] == '+');
+}
+
 unittest    // doc example (static foreach)
 {
     void shift(Args...)(ref Args args)
@@ -2086,19 +2099,6 @@ unittest    // doc example (static foreach)
     assert(a == 10);
     assert(b == 20);
     assert(c ==  0);
-}
-
-unittest    // doc example (array filling)
-{
-    static Base64Chars = cast(immutable char[64])
-        [
-            meta.iota!('A', 'Z'+1),
-            meta.iota!('a', 'z'+1),
-            meta.iota!('0', '9'+1), '+', '/'
-        ];
-    static assert(Base64Chars[16] == 'Q');
-    static assert(Base64Chars[32] == 'g');
-    static assert(Base64Chars[62] == '+');
 }
 
 
