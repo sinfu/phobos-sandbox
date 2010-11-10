@@ -1660,8 +1660,8 @@ unittest    // doc example
 
 
 /**
-$(D compose!(t1, t2, ..., tn)) returns a variadic template that in turn
-instantiates the passed in templates in a chaining way:
+$(D meta.compose!(t1, t2, ..., tn)) returns a variadic template that in
+turn instantiates the passed in templates in a chaining way:
 ----------
 template composition(args...)
 {
