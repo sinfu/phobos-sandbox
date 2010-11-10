@@ -1332,60 +1332,60 @@ Returns:
 
 Example:
 ----------
-alias meta.fix!(meta.Id, int) intFixed;
-static assert(is(intFixed!() == int));
-static assert(is(intFixed!(void) == int));
-static assert(is(intFixed!(1,2,3) == int));
+alias meta.delay!(meta.Id, int) Int;
+static assert(is(Int!() == int));
+static assert(is(Int!(void) == int));
+static assert(is(Int!(1,2,3) == int));
 ----------
 
- Using fixed template for a fallback case of $(D meta.guard):
+ Using a delayed template for a fallback case of $(D meta.guard):
 ----------
 struct Error;
 
-alias meta.guard!(q{ A[] }, meta.fix!(meta.Id, Error)) Array;
+alias meta.guard!(q{ A[] }, meta.delay!(meta.Id, Error)) Array;
 static assert(is(Array!int == int[]));
 static assert(is(Array!100 == Error));
 ----------
  */
-template fix(alias templat, args...)
+template delay(alias templat, args...)
 {
-    template fix(_...)
+    template delay(_...)
     {
-        alias templat!args fix;
+        alias templat!args delay;
     }
 }
 
-template fix(string templat, args...)
+template delay(string templat, args...)
 {
-    alias fix!(variadicT!templat, args) fix;
+    alias delay!(variadicT!templat, args) delay;
 }
 
 
 unittest
 {
-    alias meta.fix!(meta.Seq) empty;
+    alias delay!(Seq) empty;
     static assert(empty!().length == 0);
     static assert(empty!(int).length == 0);
     static assert(empty!(int, double).length == 0);
 
-    alias meta.fix!(q{ a + b }, 10, 20) sum30;
+    alias delay!(q{ a + b }, 10, 20) sum30;
     static assert(sum30!() == 30);
     static assert(sum30!(40) == 30);
 }
 
 unittest    // doc example (1)
 {
-    alias meta.fix!(meta.Id, int) intFixed;
-    static assert(is(intFixed!() == int));
-    static assert(is(intFixed!(void) == int));
-    static assert(is(intFixed!(1,2,3) == int));
+    alias meta.delay!(meta.Id, int) Int;
+    static assert(is(Int!() == int));
+    static assert(is(Int!(void) == int));
+    static assert(is(Int!(1,2,3) == int));
 }
 
 unittest    // doc example (2)
 {
     struct Error;
 
-    alias meta.guard!(q{ A[] }, meta.fix!(meta.Id, Error)) Array;
+    alias meta.guard!(q{ A[] }, meta.delay!(meta.Id, Error)) Array;
     static assert(is(Array!int == int[]));
     static assert(is(Array!100 == Error));
 }
