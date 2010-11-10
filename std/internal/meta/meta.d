@@ -1497,7 +1497,7 @@ Returns:
  Template that evaluates $(D pred) and returns an inverted result.
 
 Example:
- Passing an inverted predicate to the $(D meta.countBy).
+ Passing an inverted predicate to the $(D meta.countIf).
 ----------
 template isStruct(T)
 {
@@ -1509,7 +1509,7 @@ union  U {}
 class  C {}
 
 // Count non-struct types in the sequence.
-enum n = meta.countBy!(meta.not!isStruct,
+enum n = meta.countIf!(meta.not!isStruct,
                        int, double, S, U, C);
 static assert(n == 3);
 ----------
@@ -1571,7 +1571,7 @@ unittest    // doc example
     union  U {}
     class  C {}
 
-    enum n = meta.countBy!(meta.not!isStruct,
+    enum n = meta.countIf!(meta.not!isStruct,
                            int, double, S, U, C);
     static assert(n == 3);
 }
@@ -1605,7 +1605,7 @@ template isIntegral(T)
 }
 
 // Look for a tiny integral type: byte.
-enum k = meta.indexBy!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
+enum k = meta.indexIf!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
                        int, void, double, byte, string);
 static assert(k == 3);
 ----------
@@ -1666,7 +1666,7 @@ unittest    // doc example
     }
     alias Scope.isIntegral isIntegral;
 
-    enum k = meta.indexBy!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
+    enum k = meta.indexIf!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
                            int, void, double, byte, string);
     static assert(k == 3);
 }
@@ -3374,13 +3374,13 @@ Example:
  */
 template remove(E, seq...)
 {
-    alias removeBy!(isSame!E, seq) remove;
+    alias removeIf!(isSame!E, seq) remove;
 }
 
 /// ditto
 template remove(alias E, seq...)
 {
-    alias removeBy!(isSame!E, seq) remove;
+    alias removeIf!(isSame!E, seq) remove;
 }
 
 
@@ -3406,9 +3406,9 @@ Example:
 .
 ----------
  */
-template removeBy(alias pred, seq...)
+template removeIf(alias pred, seq...)
 {
-    alias filter!(not!pred, seq) removeBy;
+    alias filter!(not!pred, seq) removeIf;
 }
 
 
@@ -3418,7 +3418,7 @@ unittest
 
 
 
-// XXX: partitionBy?
+// XXX: partitionIf?
 
 /**
 Partitions $(D seq) into two sequences $(D .accepted) and $(D .rejected)
@@ -3458,7 +3458,7 @@ unittest
 
 
 
-// XXX: replaceBy?
+// XXX: replaceIf?
 
 /**
 Replaces all occurrences of $(D From) in $(D seq) with $(D To).
@@ -4121,13 +4121,13 @@ Example:
  */
 template find(E, seq...)
 {
-    alias findBy!(isSame!E, seq) find;
+    alias findIf!(isSame!E, seq) find;
 }
 
 /// ditto
 template find(alias E, seq...)
 {
-    alias findBy!(isSame!E, seq) find;
+    alias findIf!(isSame!E, seq) find;
 }
 
 
@@ -4149,15 +4149,15 @@ Example:
 .
 ----------
  */
-template findBy(alias pred, seq...)
+template findIf(alias pred, seq...)
 {
-    alias seq[_findChunk!(pred, 1).index!seq .. $] findBy;
+    alias seq[_findChunk!(pred, 1).index!seq .. $] findIf;
 }
 
 /// ditto
-template findBy(string pred, seq...)
+template findIf(string pred, seq...)
 {
-    alias findBy!(unaryT!pred, seq) findBy;
+    alias findIf!(unaryT!pred, seq) findIf;
 }
 
 
@@ -4185,13 +4185,13 @@ Example:
  */
 template until(E, seq...)
 {
-    alias untilBy!(isSame!E, seq) until;
+    alias untilIf!(isSame!E, seq) until;
 }
 
 /// ditto
 template until(alias E, seq...)
 {
-    alias untilBy!(isSame!E, seq) until;
+    alias untilIf!(isSame!E, seq) until;
 }
 
 
@@ -4216,9 +4216,9 @@ Example:
 .
 ----------
  */
-template untilBy(alias pred, seq...)
+template untilIf(alias pred, seq...)
 {
-    alias seq[0 .. _findChunk!(pred, 1).index!seq] untilBy;
+    alias seq[0 .. _findChunk!(pred, 1).index!seq] untilIf;
 }
 
 
@@ -4246,13 +4246,13 @@ Example:
  */
 template index(E, seq...)
 {
-    enum index = indexBy!(isSame!E, seq);
+    enum index = indexIf!(isSame!E, seq);
 }
 
 /// ditto
 template index(alias E, seq...)
 {
-    enum index = indexBy!(isSame!E, seq);
+    enum index = indexIf!(isSame!E, seq);
 }
 
 
@@ -4263,7 +4263,7 @@ unittest
 
 
 /**
-Same as evaluating $(D untilBy!(pred, seq).length) except that $(D -1) is
+Same as evaluating $(D untilIf!(pred, seq).length) except that $(D -1) is
 returned if no element satisfies the predicate.
 
 Params:
@@ -4278,15 +4278,15 @@ Example:
 .
 ----------
  */
-template indexBy(alias pred, seq...)
+template indexIf(alias pred, seq...)
 {
-    static if (untilBy!(pred, seq).length == seq.length)
+    static if (untilIf!(pred, seq).length == seq.length)
     {
-        enum sizediff_t indexBy = -1;
+        enum sizediff_t indexIf = -1;
     }
     else
     {
-        enum sizediff_t indexBy = untilBy!(pred, seq).length;
+        enum sizediff_t indexIf = untilIf!(pred, seq).length;
     }
 }
 
@@ -4314,13 +4314,13 @@ Example:
  */
 template count(E, seq...)
 {
-    enum count = countBy!(isSame!E, seq);
+    enum count = countIf!(isSame!E, seq);
 }
 
 /// ditto
 template count(alias E, seq...)
 {
-    enum count = countBy!(isSame!E, seq);
+    enum count = countIf!(isSame!E, seq);
 }
 
 
@@ -4346,31 +4346,31 @@ Example:
 .
 ----------
  */
-template countBy(alias pred, seq...)
+template countIf(alias pred, seq...)
 {
     static if (seq.length < 2)
     {
         static if (seq.length == 0 || !pred!(seq[0]))
         {
-            enum size_t countBy = 0;
+            enum size_t countIf = 0;
         }
         else
         {
-            enum size_t countBy = 1;
+            enum size_t countIf = 1;
         }
     }
     else
     {
         // Halving seq reduces the recursion depth.
-        enum countBy = countBy!(pred, seq[ 0  .. $/2]) +
-                       countBy!(pred, seq[$/2 ..  $ ]);
+        enum countIf = countIf!(pred, seq[ 0  .. $/2]) +
+                       countIf!(pred, seq[$/2 ..  $ ]);
     }
 }
 
 /// ditto
-template countBy(string pred, seq...)
+template countIf(string pred, seq...)
 {
-    enum countBy = countBy!(unaryT!pred, seq);
+    enum countIf = countIf!(unaryT!pred, seq);
 }
 
 
@@ -4577,7 +4577,7 @@ static assert(!isValidBase!(B, I, C));
  */
 template only(alias pred, seq...)
 {
-    enum only = countBy!(pred, seq) == 1;
+    enum only = countIf!(pred, seq) == 1;
 }
 
 
