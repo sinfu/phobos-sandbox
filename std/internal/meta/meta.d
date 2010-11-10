@@ -1436,6 +1436,56 @@ unittest    // doc example (2)
 
 
 /**
+Generates a template that constantly evaluates to $(D E).
+
+Params:
+ E = Compile-time entity to hold.
+
+Returns:
+ Variadic template that ignores its arguments and just returns $(D E).
+
+Example:
+----------
+alias meta.constant!int Int;
+static assert(is(Int!() == int));
+static assert(is(Int!(double, string) == int));
+----------
+ */
+template constant(E)
+{
+    template constant(_...) { alias E constant; }
+}
+
+/// ditto
+template constant(alias E)
+{
+    template constant(_...) { alias E constant; }
+}
+
+
+unittest
+{
+    alias constant!string String;
+    static assert(is(String!() == string));
+    static assert(is(String!(1,2,3) == string));
+    static assert(is(String!(double, bool) == string));
+
+    alias constant!512 number;
+    static assert(number!() == 512);
+    static assert(number!(1,2,3) == 512);
+    static assert(number!(double, bool) == 512);
+}
+
+unittest
+{
+    alias meta.constant!int Int;
+    static assert(is(Int!() == int));
+    static assert(is(Int!(double, string) == int));
+}
+
+
+
+/**
 Creates a predicate template that inverts the result of the given one.
 
 Params:
@@ -3147,6 +3197,48 @@ unittest
     static assert(is(PP[2] ==  void**));
 
     static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
+}
+
+
+
+/**
+$(D meta.mapIf) transforms only those elements satisfying specified predicate.
+
+Params:
+ pred = Unary predicate template that decides whether an element should be
+        transformed or just copied.
+  fun = Unary template used to transform each filtered element of $(D seq).
+        The result can be a sequence.
+  seq = Sequence of compile-time entities to transform.
+
+Returns:
+ Sequence $(D seq) in which only elements satisfying $(D pred) are transformed
+ by $(D fun).
+
+Example:
+----------
+.
+----------
+ */
+template mapIf(alias pred, alias fun, seq...)
+{
+    alias map!(_conditioned!(variadicT!pred, variadicT!fun), seq) mapIf;
+}
+
+private template _conditioned(alias cond, alias then, alias otherwise = Seq)
+{
+    template _conditioned(args...)
+    {
+        static if (cond!args)
+            alias      then!args _conditioned;
+        else
+            alias otherwise!args _conditioned;
+    }
+}
+
+
+unittest
+{
 }
 
 
