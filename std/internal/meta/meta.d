@@ -2023,8 +2023,6 @@ static assert(Base64Chars[62] == '+');
 ----------
 void shift(Args...)(ref Args args)
 {
-    // Each 'i' is a compile-time value, so it can be used to index
-    // into the variadic parameters.
     foreach (i; meta.iota!(1, +args.length))
     {
         args[i - 1] = args[i];
