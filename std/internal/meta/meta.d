@@ -2328,17 +2328,14 @@ Returns:
  if $(D n) is zero or $(D seq) is empty.
 
 Example:
- Filling a continuous region in a table with specific values.
 ----------
-enum CharType { other, digit, alpha }
-
-static immutable CharType[256] charTypeTab =
-[
-    '0': meta.repeat!(10, CharType.digit),
-    'A': meta.repeat!(26, CharType.alpha),
-    'a': meta.repeat!(26, CharType.alpha),
-];
-static assert(charTypeTab['M'] == CharType.alpha);
+static immutable array =
+    [
+        meta.repeat!(3, 1,2,3),
+        meta.repeat!(3, 4,5,6),
+    ];
+static assert(array == [ 1,2,3, 1,2,3, 1,2,3,
+                         4,5,6, 4,5,6, 4,5,6 ]);
 ----------
  */
 template repeat(size_t n, seq...)
@@ -2382,6 +2379,17 @@ unittest
     static assert([0, repeat!(1, 8,7), 0] == [0, 8,7,             0]);
     static assert([0, repeat!(3, 8,7), 0] == [0, 8,7,8,7,8,7,     0]);
     static assert([0, repeat!(4, 8,7), 0] == [0, 8,7,8,7,8,7,8,7, 0]);
+}
+
+unittest
+{
+    static immutable array =
+        [
+            meta.repeat!(3, 1,2,3),
+            meta.repeat!(3, 4,5,6),
+        ];
+    static assert(array == [ 1,2,3, 1,2,3, 1,2,3,
+                             4,5,6, 4,5,6, 4,5,6 ]);
 }
 
 
