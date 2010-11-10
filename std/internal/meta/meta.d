@@ -242,23 +242,6 @@ unittest
 
 
 
-/* undocumented (for internal use) */
-template insertFront(alias cdr, car...)
-{
-    alias pack!(car, cdr.expand) insertFront;
-}
-
-unittest
-{
-    alias insertFront!(pack!(), 1,2,3) empty123;
-    static assert([ empty123.expand ] == [ 1,2,3 ]);
-
-    alias insertFront!(pack!int, double) intdouble;
-    static assert(is(intdouble.expand == Seq!(double, int)));
-}
-
-
-
 /**
 Determines if $(D A) and $(D B) are the same entities.
 
@@ -3009,65 +2992,6 @@ unittest
     static assert(zipped[0] == "int i");
     static assert(zipped[1] == "double x");
     static assert(zipped[2] == "string s");
-}
-
-
-
-/**
-Generates a sequence of the _cartesian product of packed sequences.
-
-Params:
- seqs = One or more packed sequences.
-
-Returns:
- Sequence of packed sequences, each of which is composed of a combination
- of the elements from the input sequences.  The empty sequence is returned
- if at least one sequence in $(D seqs) is empty.
-
-Example:
-----------
-// Test nine cases of floating-point to string conversions.
-foreach (Comb; meta.cartesian!(meta.pack!(float, double, real),
-                               meta.pack!(string, wstring, dstring)))
-{
-    alias Comb.expand[0] Source;
-    alias Comb.expand[1] Target;
-
-    Source value = 0;
-    assert(std.conv.to!Target(value) == "0");
-}
-----------
- */
-template cartesian(seqs...)
-{
-    alias _cartesian!seqs.Result cartesian;
-}
-
-
-private
-{
-    template _cartesian(alias first)
-    {
-        alias map!(pack, first.expand) Result;
-    }
-
-    template _cartesian(alias first, rest...)
-    {
-        alias _cartesian!rest.Result subCartesian;
-
-        // Insert each element of 'first' at the front of each
-        // subcartesian product tuples.
-        template consMap(car...)
-        {
-            alias map!(rbind!(insertFront, car), subCartesian) consMap;
-        }
-        alias map!(consMap, first.expand) Result;
-    }
-}
-
-
-unittest
-{
 }
 
 
