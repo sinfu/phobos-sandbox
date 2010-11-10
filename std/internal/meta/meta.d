@@ -1949,6 +1949,86 @@ unittest     // doc example
 
 
 
+/**
+Generates a template that conditionally instantiates either $(D then) or
+$(D otherwise) depending on the result of $(D pred).
+
+Params:
+      pred = Predicate template.
+      then = Template to instantiate when $(D pred) is satisfied.
+ otherwise = Template to instantiate when $(D pred) is not satisfied.
+
+Returns:
+ Variadic template that instantiates $(D then) with its arguments if the
+ arguments satisfy $(D pred), or instantiates $(D otherwise) with the same
+ arguments if not.
+
+Example:
+----------
+import std.meta, std.traits, std.typecons;
+
+alias meta.conditional!(q{ is(A == class) }, Rebindable, Unqual) NoTopConst;
+
+static assert(is( NoTopConst!(const Object) == Rebindable!(const Object) ));
+static assert(is( NoTopConst!(const int[]) == const(int)[] ));
+static assert(is( NoTopConst!(const int) == int ));
+----------
+ */
+template conditional(alias pred, alias then, alias otherwise = meta.Id)
+{
+    alias _conditional!(variadicT!pred,
+                        variadicT!then,
+                        variadicT!otherwise).conditional conditional;
+}
+
+private template _conditional(alias pred, alias then, alias otherwise)
+{
+    template conditional(args...)
+    {
+        static if (pred!args)
+        {
+            alias then!args conditional;
+        }
+        else
+        {
+            alias otherwise!args conditional;
+        }
+    }
+}
+
+
+unittest
+{
+    alias conditional!(q{  true }, q{ const A }, q{ immutable A }) Const;
+    alias conditional!(q{ false }, q{ const A }, q{ immutable A }) Imm;
+    static assert(is(Const!double ==     const double));
+    static assert(is(  Imm!double == immutable double));
+
+    alias conditional!(isType, q{ A }, q{ typeof(a) }) LooseTypeof;
+    static assert(is(LooseTypeof!int == int));
+    static assert(is(LooseTypeof!"abc" == string));
+
+    // Using default 'otherwise'
+    alias conditional!(q{ is(A == immutable) }, q{ A[] }) ImmArray;
+    static assert(is(ImmArray!int == int));
+    static assert(is(ImmArray!string == string));
+    static assert(is(ImmArray!(immutable int) == immutable(int)[]));
+}
+
+unittest    // doc example
+{
+    struct Unqual(T) {}
+    struct Rebindable(T) {}
+
+    alias meta.conditional!(q{ is(A == class) }, Rebindable, Unqual) NoHeadConst;
+
+    static assert(is( NoHeadConst!(const Object) == Rebindable!(const Object) ));
+    static assert(is( NoHeadConst!(const int[]) == Unqual!(const int[]) ));
+    static assert(is( NoHeadConst!(const int) == Unqual!(const int) ));
+}
+
+
+
 /* undocumented (for internal use) */
 template compiles(templates...)
 {
@@ -3197,48 +3277,6 @@ unittest
     static assert(is(PP[2] ==  void**));
 
     static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
-}
-
-
-
-/**
-$(D meta.mapIf) transforms only those elements satisfying specified predicate.
-
-Params:
- pred = Unary predicate template that decides whether an element should be
-        transformed or just copied.
-  fun = Unary template used to transform each filtered element of $(D seq).
-        The result can be a sequence.
-  seq = Sequence of compile-time entities to transform.
-
-Returns:
- Sequence $(D seq) in which only elements satisfying $(D pred) are transformed
- by $(D fun).
-
-Example:
-----------
-.
-----------
- */
-template mapIf(alias pred, alias fun, seq...)
-{
-    alias map!(_conditioned!(variadicT!pred, variadicT!fun), seq) mapIf;
-}
-
-private template _conditioned(alias cond, alias then, alias otherwise = Seq)
-{
-    template _conditioned(args...)
-    {
-        static if (cond!args)
-            alias      then!args _conditioned;
-        else
-            alias otherwise!args _conditioned;
-    }
-}
-
-
-unittest
-{
 }
 
 
