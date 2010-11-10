@@ -3309,51 +3309,50 @@ unittest
 
 
 /**
-Filters those items satisfying $(D pred) out of a sequence $(D seq).
+Creates a sequence only containing elements satisfying $(D pred).
 
 Params:
- fun = Unary template or expression string that maps a compile-time
-       entity into a boolean value.
- seq = Sequence of compile-time entities.
+ pred = Unary predicate template that decides whether or not to include an
+        element in the resulting sequence.
+  seq = Sequence to filter.
 
 Returns:
- .
+ Sequence only containing elements of $(D seq) for each of which $(D pred)
+ evaluates to $(D true).
 
 Example:
 ----------
-.
+alias meta.filter!(q{ A.sizeof < 4 }, byte, short, int, long) SmallTypes;
+static assert(is(SmallTypes == meta.Seq!(byte, short)));
 ----------
  */
 template filter(alias pred, seq...)
 {
-    static if (seq.length < 2)
-    {
-        static if (seq.length == 0 || pred!(seq[0]))
-        {
-            alias seq filter;
-        }
-        else
-        {
-            alias Seq!() filter;
-        }
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        alias Seq!(filter!(pred, seq[ 0  .. $/2]),
-                   filter!(pred, seq[$/2 ..  $ ])) filter;
-    }
-}
-
-/// ditto
-template filter(string pred, seq...)
-{
-    alias .filter!(unaryT!pred, seq) filter;
+    alias map!(conditional!(pred, Id, delay!Seq), seq) filter;
 }
 
 
 unittest
 {
+    alias filter!(isType) empty;
+    static assert(empty.length == 0);
+
+    alias filter!(isType, 1,2,3) none;
+    alias filter!(isValue, 1,2,3) all;
+    static assert([ none ] == []);
+    static assert([ all ] == [ 1,2,3 ]);
+
+    alias filter!(isType, int, "x", double, "y") someT;
+    static assert(is(someT == Seq!(int, double)));
+
+    alias filter!(q{ a < 0 }, 4, -3, 2, -1, 0) someV;
+    static assert([ someV ] == [ -3, -1 ]);
+}
+
+unittest
+{
+    alias meta.filter!(q{ A.sizeof < 4 }, byte, short, int, long) SmallTypes;
+    static assert(is(SmallTypes == meta.Seq!(byte, short)));
 }
 
 
