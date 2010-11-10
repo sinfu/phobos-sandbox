@@ -3358,18 +3358,20 @@ unittest
 
 
 /**
-Removes all occurrences of $(D E) in $(D seq).
+Removes all occurrences of $(D E) in $(D seq) if any.  Each occurrence is
+tested in terms of $(D meta.isSame).
 
 Params:
-   E = Compile-time entity to remove from $(D seq).
- seq = .
+   E = Compile-time entity to remove.
+ seq = Target sequence.
 
 Returns:
- Sequence of elements of $(D seq) except $(D E).
+ Sequence $(D seq) in which any occurrence of $(D E) is erased.
 
 Example:
 ----------
-.
+alias meta.remove!(void, int, void, double, void, string) Res;
+static assert(is(Res == meta.Seq!(int, double, string)));
 ----------
  */
 template remove(E, seq...)
@@ -3386,6 +3388,24 @@ template remove(alias E, seq...)
 
 unittest
 {
+    alias remove!(void) empty1;
+    alias remove!(1024) empty2;
+    static assert(empty1.length == 0);
+    static assert(empty2.length == 0);
+
+    static assert([ remove!(void, 1,2,3,2,1) ] == [ 1,2,3,2,1 ]);
+    static assert([ remove!(   2, 1,2,3,2,1) ] == [ 1,  3,  1 ]);
+
+    alias remove!(void, int,void,string,void,double) NoVoid;
+    alias remove!(   2, int,void,string,void,double) No2;
+    static assert(is(NoVoid == Seq!(int,     string,     double)));
+    static assert(is(No2    == Seq!(int,void,string,void,double)));
+}
+
+unittest
+{
+    alias meta.remove!(void, int, void, double, void, string) Res;
+    static assert(is(Res == meta.Seq!(int, double, string)));
 }
 
 
