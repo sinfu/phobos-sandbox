@@ -3419,67 +3419,109 @@ unittest
 
 
 
-// XXX: replaceIf?
-
 /**
 Replaces all occurrences of $(D From) in $(D seq) with $(D To).
 
 Params:
- From = Compile-time entity to remove from $(D seq).
-   To = Compile-time entity to insert in place of $(D From).
-  seq = Sequence to perform replacement.
+ From = Element to remove.
+   To = Element to insert in place of $(D From).
+  seq = Sequence to perform replacements.
 
 Returns:
- Sequence $(D seq) in which all occurrences of $(D From) are replaced
- with $(D To).
+ Sequence $(D seq) in which every occurrence of $(D From) (if any) is
+ replaced by $(D To).
 
 Example:
 ----------
-.
+struct This;
+
+struct Example(Params...)
+{
+    // Resolve 'This'
+    alias meta.replace!(This, Example!Params, Params) Types;
+}
+alias Example!(int, double, This) Ex;
+static assert(is(Ex.Types[2] == Ex));
+----------
+
+Tips:
+ You may want to use $(D meta.map) with $(D meta.conditional) to perform more
+ complex replacements.  The following example replaces every const types in a
+ type sequence with a $(D void).
+----------
+alias meta.map!(meta.conditional!(q{ is(A == const) }, meta.constant!void),
+                int, const double, string, const bool) Res;
+static assert(is(Res == meta.Seq!(int, void, string, void)));
 ----------
  */
 template replace(From, To, seq...)
 {
-    alias map!(_replacer!(From, To), seq) replace;
+    alias map!(conditional!(isSame!From, constant!To), seq) replace;
 }
 
 /// ditto
-template replace(alias From, To, seq...)
+template replace(alias From, To, seq...) if (!isType!From)
 {
-    alias map!(_replacer!(From, To), seq) replace;
+    alias map!(conditional!(isSame!From, constant!To), seq) replace;
 }
 
 /// ditto
-template replace(From, alias To, seq...)
+template replace(From, alias To, seq...) if (!isType!To)
 {
-    alias map!(_replacer!(From, To), seq) replace;
+    alias map!(conditional!(isSame!From, constant!To), seq) replace;
 }
 
 /// ditto
-template replace(alias From, alias To, seq...)
+template replace(alias From, alias To, seq...) if (!isType!From && !isType!To)
 {
-    alias map!(_replacer!(From, To), seq) replace;
-}
-
-
-private template _replacer(FromTo...)
-{
-    template _replacer(E...)
-    {
-        static if (isSame!(E[0], FromTo[0]))
-        {
-            alias FromTo[1 .. $] _replacer;
-        }
-        else
-        {
-            alias E              _replacer;
-        }
-    }
+    alias map!(conditional!(isSame!From, constant!To), seq) replace;
 }
 
 
 unittest
 {
+    alias replace!(void, int) empty;
+    static assert(empty.length == 0);
+
+    alias replace!(void, int, Seq!(int, string, double)) NoMatch;
+    static assert(tag!NoMatch == tag!(int, string, double));
+
+    // Test for the specializations
+    alias replace!(void, int, Seq!(void, double, void, string)) TT;
+    static assert(tag!TT == tag!(int, double, int, string));
+
+    alias replace!(0, int, Seq!(0, 1, 0, -1)) vT;
+    static assert(tag!vT == tag!(int, 1, int, -1));
+
+    alias replace!(int, -1, Seq!(int, double, int, string)) Tv;
+    static assert(tag!Tv == tag!(-1, double, -1, string));
+
+    alias replace!(null, "", Seq!(null, "abc", null, "def")) vv;
+    static assert(tag!vv == tag!("", "abc", "", "def"));
+
+    // Test for ambiguity problem with user-defined types due to @@@BUG4431@@@
+    struct S;
+    alias replace!(S, int, S, S, S) amb1;
+    alias replace!(int, S, S, S, S) amb2;
+}
+
+unittest    // doc example
+{
+    struct This;
+
+    struct Example(Params...)
+    {
+        alias meta.replace!(This, Example!Params, Params) Types;
+    }
+    alias Example!(int, double, This) Ex;
+    static assert(is(Ex.Types[2] == Ex));
+}
+
+unittest    // doc tips
+{
+    alias meta.map!(meta.conditional!(q{ is(A == const) }, meta.constant!void),
+                    int, const double, string, const bool) Res;
+    static assert(is(Res == meta.Seq!(int, void, string, void)));
 }
 
 
