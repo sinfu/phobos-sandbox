@@ -1701,9 +1701,18 @@ static assert(is(R == meta.Seq!(bool, ushort, int)));
  */
 template or(preds...)
 {
+    alias reduce!(.or, preds) or;
+}
+
+template or(alias pred1 = constant!false,
+            alias pred2 = constant!false)
+{
     template or(args...)
     {
-        enum or = any!(applier!args, preds);
+        static if (apply!(pred1, args) || apply!(pred2, args))
+            enum or = true;
+        else
+            enum or = false;
     }
 }
 
@@ -1728,6 +1737,10 @@ unittest
     static assert( isConst2!(const int));
     static assert(!isConst2!(      int));
 
+    alias or!q{ a < 0 } isNeg;
+    static assert( isNeg!(-1));
+    static assert(!isNeg!( 0));
+
     // Compose template and string
     alias or!(isConst, q{ A.sizeof < 4 }) isTinyOrConst;
     static assert( isTinyOrConst!(const short));
@@ -1738,17 +1751,9 @@ unittest
 
 unittest    // doc example
 {
-    struct Scope
-    {
-        template isString(T)
-        {
-            enum isString = is(T == string);
-        }
-    }
-    alias Scope.isString isString;
-
-    alias meta.or!("a == 0", isString) zeroOrInt;
-    static assert(zeroOrInt!0);
+    alias meta.filter!(meta.or!(q{ A.sizeof < 4 }, q{ A.min < 0 }),
+                       bool, ushort, int, uint) R;
+    static assert(is(R == meta.Seq!(bool, ushort, int)));
 }
 
 
