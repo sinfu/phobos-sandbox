@@ -1471,6 +1471,12 @@ template constant(alias E)
     template constant(_...) { alias E constant; }
 }
 
+/// ditto
+template constant()
+{
+    template constant(_...) { alias Seq!() constant; }
+}
+
 
 unittest
 {
@@ -1483,9 +1489,14 @@ unittest
     static assert(number!() == 512);
     static assert(number!(1,2,3) == 512);
     static assert(number!(double, bool) == 512);
+
+    alias constant!() empty;
+    static assert(empty!().length == 0);
+    static assert(empty!(1,2,3).length == 0);
+    static assert(empty!(double, bool).length == 0);
 }
 
-unittest
+unittest    // doc example
 {
     alias meta.constant!int Int;
     static assert(is(Int!() == int));
@@ -3332,7 +3343,7 @@ static assert(is(SmallTypes == meta.Seq!(byte, short)));
  */
 template filter(alias pred, seq...)
 {
-    alias map!(conditional!(pred, Id, delay!Seq), seq) filter;
+    alias map!(conditional!(pred, Id, constant!()), seq) filter;
 }
 
 
