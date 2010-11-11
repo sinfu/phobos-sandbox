@@ -1609,7 +1609,7 @@ Example:
 alias meta.and!(meta.isType, q{ is(A : long) }, q{ A.min < 0 }) isSignedInt;
 static assert( isSignedInt!short);
 static assert( isSignedInt!int);
-static assert( isSignedInt!uint);
+static assert(!isSignedInt!uint);
 static assert(!isSignedInt!string);     // stops at the second predicate
 static assert(!isSignedInt!"wrong");    // stops at the first predicate
 ----------
@@ -1619,7 +1619,8 @@ template and(preds...)
     alias reduce!(.and, preds) and;
 }
 
-template and(alias pred1, alias pred2)
+template and(alias pred1 = constant!true,
+             alias pred2 = constant!true)
 {
     template and(args...)
     {
@@ -1627,22 +1628,6 @@ template and(alias pred1, alias pred2)
             enum and = true;
         else
             enum and = false;
-    }
-}
-
-template and(alias pred)
-{
-    template and(args...)
-    {
-        enum and = !!apply!(pred, args);
-    }
-}
-
-template and()
-{
-    template and(args...)
-    {
-        enum and = true;
     }
 }
 
@@ -1682,7 +1667,7 @@ unittest    // doc example
     alias meta.and!(meta.isType, q{ is(A : long) }, q{ A.min < 0 }) isSignedInt;
     static assert( isSignedInt!short);
     static assert( isSignedInt!int);
-    static assert( isSignedInt!uint);
+    static assert(!isSignedInt!uint);
     static assert(!isSignedInt!string);
     static assert(!isSignedInt!"wrong");
 }
