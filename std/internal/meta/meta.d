@@ -1783,20 +1783,18 @@ alias meta.compose!(q{ A[] },
 static assert(is(ConstArray!int == const(int)[]));
 ----------
  */
-template compose(templates...) if (templates.length > 0)
+template compose(templates...)
 {
-    template compose(args...)
-    {
-        alias apply!(reduce!(.compose, templates), args) compose;
-    }
+    alias reduce!(.compose, templates) compose;
 }
 
-template compose(alias f, alias g)
+template compose(alias template1 = Seq,
+                 alias template2 = Seq)
 {
     template compose(args...)
     {
-        // NOTE: f and g might be strings.
-        alias apply!(f, apply!(g, args)) compose;
+        // NOTE: Templates might be strings.
+        alias apply!(template1, apply!(template2, args)) compose;
     }
 }
 
