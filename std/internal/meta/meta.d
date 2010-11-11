@@ -3419,46 +3419,6 @@ unittest
 
 
 
-// XXX: partitionIf?
-
-/**
-Partitions $(D seq) into two sequences $(D .accepted) and $(D .rejected)
-which do and do not satisfy $(D pred).
-
-Params:
- pred = Unary predicate template or expression string.
-  seq = Sequence to _partition.
-
-Returns:
- The two sequences $(D .accepted) and $(D .rejected).
-
-Example:
- Partitioning a sequence of types into interface and others.
-----------
-class C {}
-interface I {}
-abstract class A {}
-
-alias meta.partition!(q{ is(A == interface) }, C, I, A) result;
-static assert(is(result.accepted == meta.Seq!(I   )));
-static assert(is(result.rejected == meta.Seq!(C, A)));
-----------
- */
-template partition(alias pred, seq...)
-{
-    alias filter!(    pred, seq) accepted;
-    alias filter!(not!pred, seq) rejected;
-
-    static assert(accepted.length + rejected.length == seq.length);
-}
-
-
-unittest
-{
-}
-
-
-
 // XXX: replaceIf?
 
 /**
