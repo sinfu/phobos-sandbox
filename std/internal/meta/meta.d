@@ -3385,13 +3385,13 @@ static assert(is(Res == meta.Seq!(int, double, string)));
  */
 template remove(E, seq...)
 {
-    alias removeIf!(isSame!E, seq) remove;
+    alias filter!(not!(isSame!E), seq) remove;
 }
 
 /// ditto
 template remove(alias E, seq...)
 {
-    alias removeIf!(isSame!E, seq) remove;
+    alias filter!(not!(isSame!E), seq) remove;
 }
 
 
@@ -3415,34 +3415,6 @@ unittest
 {
     alias meta.remove!(void, int, void, double, void, string) Res;
     static assert(is(Res == meta.Seq!(int, double, string)));
-}
-
-
-
-/**
-Removes any elements of $(D seq) satisfying the predicate $(D pred).
-
-Params:
- pred = Unary predicate template or expression string that evaluates
-        each element of $(D seq) as a boolean value.
-  seq = .
-
-Returns:
- Sequence of elements of $(D seq) not satisfying $(D pred).
-
-Example:
-----------
-.
-----------
- */
-template removeIf(alias pred, seq...)
-{
-    alias filter!(not!pred, seq) removeIf;
-}
-
-
-unittest
-{
 }
 
 
