@@ -1606,24 +1606,43 @@ Returns:
 
 Example:
 ----------
-template isIntegral(T)
-{
-    enum isIntegral = meta.any!(meta.isSame!T,
-                                byte, short, int, long,
-                                ubyte, ushort, uint, ulong);
-}
-
-// Look for a tiny integral type: byte.
-enum k = meta.indexIf!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
-                       int, void, double, byte, string);
-static assert(k == 3);
+alias meta.and!(meta.isType, q{ is(A : long) }, q{ A.min < 0 }) isSignedInt;
+static assert( isSignedInt!short);
+static assert( isSignedInt!int);
+static assert( isSignedInt!uint);
+static assert(!isSignedInt!string);     // stops at the second predicate
+static assert(!isSignedInt!"wrong");    // stops at the first predicate
 ----------
  */
 template and(preds...)
 {
+    alias reduce!(.and, preds) and;
+}
+
+template and(alias pred1, alias pred2)
+{
     template and(args...)
     {
-        enum and = all!(applier!args, preds);
+        static if (apply!(pred1, args) && apply!(pred2, args))
+            enum and = true;
+        else
+            enum and = false;
+    }
+}
+
+template and(alias pred)
+{
+    template and(args...)
+    {
+        enum and = !!apply!(pred, args);
+    }
+}
+
+template and()
+{
+    template and(args...)
+    {
+        enum and = true;
     }
 }
 
@@ -1632,21 +1651,23 @@ unittest
 {
     struct Scope
     {
-        template isConst(T)
-        {
-            enum isConst = is(T == const);
-        }
+        template isConst(T) { enum isConst = is(T == const); }
     }
     alias Scope.isConst isConst;
 
     // Compose nothing
     alias and!() yes;
     static assert(yes!());
+    static assert(yes!(1, 2, 3));
 
     // No actual composition
     alias and!isConst isConst2;
     static assert( isConst2!(const int));
     static assert(!isConst2!(      int));
+
+    alias and!q{ a < 0 } isNeg;
+    static assert( isNeg!(-1));
+    static assert(!isNeg!( 0));
 
     // Compose template and string
     alias and!(isConst, q{ A.sizeof < 4 }) isTinyConst;
@@ -1654,30 +1675,16 @@ unittest
     static assert(!isTinyConst!(      short));
     static assert(!isTinyConst!(const   int));
     static assert(!isTinyConst!(        int));
-
-    // Test for laziness
-    alias and!(q{ is(A : ulong) }, q{ A.min < 0 }) isSignedInt;
-    static assert( isSignedInt!int);
-    static assert(!isSignedInt!uint);
-    static assert(!isSignedInt!string);  // no error despite the lack of .min
 }
 
 unittest    // doc example
 {
-    struct Scope
-    {
-        template isIntegral(T)
-        {
-            enum isIntegral = meta.any!(meta.isSame!T,
-                                        byte, short, int, long,
-                                        ubyte, ushort, uint, ulong);
-        }
-    }
-    alias Scope.isIntegral isIntegral;
-
-    enum k = meta.indexIf!(meta.and!(isIntegral, q{ A.sizeof < 4 }),
-                           int, void, double, byte, string);
-    static assert(k == 3);
+    alias meta.and!(meta.isType, q{ is(A : long) }, q{ A.min < 0 }) isSignedInt;
+    static assert( isSignedInt!short);
+    static assert( isSignedInt!int);
+    static assert( isSignedInt!uint);
+    static assert(!isSignedInt!string);
+    static assert(!isSignedInt!"wrong");
 }
 
 
