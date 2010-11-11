@@ -1885,40 +1885,37 @@ Example:
 ----------
 alias meta.guard!(q{ A.min < 0 }, q{ false }) hasNegativeMin;
 static assert( hasNegativeMin!int);
-static assert(!hasNegativeMin!uint);    // uint.min is non-negative
-static assert(!hasNegativeMin!void);    // void.min is not defined
+static assert(!hasNegativeMin!uint);
+static assert(!hasNegativeMin!void);    // void.min is not defined!
 ----------
  */
 template guard(templates...) if (templates.length > 0)
 {
-    static if (templates.length == 1)
-    {
-        alias variadicT!(templates[0]) guard;
-    }
-    else
-    {
-        alias reduce!(.guard, templates) guard;
-    }
+    alias reduce!(.guard, templates) guard;
 }
 
-template guard(alias f, alias g)
+template guard(alias template1, alias template2)
 {
     template guard(args...)
     {
-        static if (__traits(compiles, f!args))
+        static if (__traits(compiles, apply!(template1, args)))
         {
-            alias f!args guard;
+            alias apply!(template1, args) guard;
         }
         else
         {
-            alias g!args guard;
+            alias apply!(template2, args) guard;
         }
     }
 }
 
-template guard(string f, alias  g) { alias .guard!(variadicT!f,           g) guard; }
-template guard(alias  f, string g) { alias .guard!(          f, variadicT!g) guard; }
-template guard(string f, string g) { alias .guard!(variadicT!f, variadicT!g) guard; }
+template guard(alias templat)
+{
+    template guard(args...)
+    {
+        alias apply!(templat, args) guard;
+    }
+}
 
 
 unittest
