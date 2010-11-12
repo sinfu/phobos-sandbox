@@ -3838,13 +3838,20 @@ unittest
 
 
 /**
-Removes all duplicate elements in $(D seq) except the first occurrence.
+Completely removes all duplicate elements in $(D seq) except the first one.
+Duplicates are detected with $(D meta.isSame).
 
 Params:
- seq = Sequence to eliminate duplicate elements.
+ seq = Target sequence.
 
 Returns:
- Sequence $(D seq) without duplicate elements.
+ Sequence $(D seq) without any duplicate elements.
+
+Example:
+----------
+alias meta.removeDuplicates!(int, bool, bool, int, string) Res;
+static assert(is(Res == meta.Seq!(int, bool, string)));
+----------
  */
 template removeDuplicates(seq...)
 {
@@ -3854,20 +3861,46 @@ template removeDuplicates(seq...)
 
 unittest
 {
+    alias removeDuplicates!() empty;
+    static assert(empty.length == 0);
+
+    alias removeDuplicates!(int) Single;
+    static assert(is(Single == Seq!(int)));
+
+    alias removeDuplicates!(int, double, string, int, double) Dup;
+    static assert(is(Dup == Seq!(int, double, string)));
+
+    alias removeDuplicates!("fun", "gun", "fun", "hun") values;
+    static assert([ values ] == [ "fun", "gun", "hun" ]);
+}
+
+unittest
+{
+    alias meta.removeDuplicates!(int, bool, bool, int, string) Res;
+    static assert(is(Res == meta.Seq!(int, bool, string)));
 }
 
 
 
 /**
-Generalization of the $(D meta.removeDups).  It detects duplicate
-elements with a specified equality instead of the $(D meta.isSame).
+Generalization of $(D meta.removeDuplicates) detecting duplicates with
+$(D eq), instead of $(D meta.isSame).
 
 Params:
-  eq = Binary template that compares parameters for equality.
- seq = Sequence to eliminate duplicates.
+  eq = Binary predicate template that determines if passed-in arguments are
+       the same (or duplicated).
+ seq = Target sequence.
 
 Returns:
- Sequence $(D seq) without duplicates in terms of $(D eq).
+ Sequence $(D seq) in which any group of duplicate elements are eliminated
+ except the fist one of each group.
+
+Example:
+----------
+alias meta.removeDuplicatesBy!(q{ A.sizeof == B.sizeof },
+                               int, uint, short, ushort, uint) Res;
+static assert(is(Res == meta.Seq!(int, short)));
+----------
  */
 template removeDuplicatesBy(alias eq, seq...)
 {
@@ -3877,15 +3910,31 @@ template removeDuplicatesBy(alias eq, seq...)
     }
     else
     {
-        alias Seq!(seq[0], removeDuplicatesBy!(
-                               removeBy!(bind!(eq, seq[0]),
-                                         seq[1 .. $])))
+        alias Seq!(seq[0],
+                   removeDuplicatesBy!(
+                       eq, filter!(bind!(not!eq, seq[0]), seq[1 .. $])))
               removeDuplicatesBy;
     }
 }
 
+
 unittest
 {
+    alias removeDuplicatesBy!(q{ a == b }) empty;
+    static assert(empty.length == 0);
+
+    alias removeDuplicatesBy!(q{ a == b }, 1,2,3,4,5) nodup;
+    static assert([ nodup ] == [ 1,2,3,4,5 ]);
+
+    alias removeDuplicatesBy!(q{ a < b }, 9,6,7,8,3,4,5,0) decrease;
+    static assert([ decrease ] == [ 9,6,3,0 ]);
+}
+
+unittest
+{
+    alias meta.removeDuplicatesBy!(q{ A.sizeof == B.sizeof },
+                                   int, uint, short, ushort, uint) Res;
+    static assert(is(Res == meta.Seq!(int, short)));
 }
 
 
