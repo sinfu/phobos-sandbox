@@ -4241,30 +4241,27 @@ Params:
  */
 template _findChunk(alias pred, size_t m)
 {
-    template index(seq...)
-        if (seq.length < m)
+    template index(seq...) if (seq.length < m)
     {
         enum index = seq.length;    // not found
     }
 
     // Simple search.
-    template index(seq...)
-        if (m <= seq.length && seq.length < 2*m)
+    template index(seq...) if (m <= seq.length && seq.length < 2*m)
     {
         static if (pred!(seq[0 .. m]))
         {
-            enum size_t index = 0;
+            enum index = 0;
         }
         else
         {
-            enum size_t index = index!(seq[1 .. $]) + 1;
+            enum index = index!(seq[1 .. $]) + 1;
         }
     }
 
     // Halve seq to reduce the recursion depth.  This specialization
     // is just for that purpose and index() can work without this.
-    template index(seq...)
-        if (2*m <= seq.length)
+    template index(seq...) if (2*m <= seq.length)
     {
         static if (index!(seq[0 .. $/2 + m - 1]) < seq.length/2)
         {
