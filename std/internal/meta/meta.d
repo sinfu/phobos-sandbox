@@ -4008,13 +4008,16 @@ private
 
 unittest
 {
+    static assert(is(reduce!(q{ A[B] }, int) == int));
+    static assert(reduce!(q{ a ~ b }, "abc") == "abc");
+
     alias reduce!(q{ A[B] }, int, double, string) Assoc;
     static assert(is(Assoc == int[double][string]));
 
     enum concat = reduce!(q{ a ~ b }, "abc", "123", "xyz", "987");
     static assert(concat == "abc123xyz987");
 
-    // Test for non-ambiguity
+    // Test for ambiguity on matching string/alias parameters
     struct S {}
     alias reduce!(        q{ A[B] }, S) K1;
     alias reduce!(binaryT!q{ A[B] }, S) K2;
