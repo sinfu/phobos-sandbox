@@ -3645,51 +3645,78 @@ unittest    // doc example
 
 
 /**
-Determines if $(D seq) is sorted in terms of the ordering $(D comp).
+Determines if $(D seq) is sorted according to $(D comp).  $(D seq) is sorted
+if and only if $(D meta.sort!(comp, seq)) matches $(D seq).
 
 Params:
- comp = .
-  seq = .
+ comp = Binary comparison template.
+  seq = Sequence to examine.
 
 Returns:
- .  $(D true) is returned if $(D seq.length) is less than $(D 2).
+ $(D true) iff, for any valid indices $(D i > j), $(D comp!(seq[i], seq[j]))
+ evaluates to $(D false).
 
 Example:
+ The second sequence in the following example is not sorted since
+ $(D ushort.sizeof < int.sizeof) is true.
 ----------
- .
+static assert( meta.isSorted!(q{ A.sizeof < B.sizeof }, byte, short, ushort));
+static assert(!meta.isSorted!(q{ A.sizeof < B.sizeof }, byte,   int, ushort));
 ----------
  */
-template isSortedBy(alias comp, seq...)
+template isSorted(alias comp, seq...)
 {
     static if (seq.length < 2)
     {
-        enum isSortedBy = true;
+        enum isSorted = true;
     }
     else
     {
         // Comparison must be in this order, or false negative happens.
-        static if (comp!(seq[$/2], seq[$/2 - 1]))
+        static if (comp!(seq[$ / 2], seq[$ / 2 - 1]))
         {
-            enum isSortedBy = false;
+            enum isSorted = false;
         }
         else
         {
             // Halving seq reduces the recursion depth.
-            enum isSortedBy = isSortedBy!(comp, seq[ 0  .. $/2]) &&
-                              isSortedBy!(comp, seq[$/2 ..  $ ]);
+            enum isSorted = isSorted!(comp, seq[ 0  .. $/2]) &&
+                            isSorted!(comp, seq[$/2 ..  $ ]);
         }
     }
 }
 
-/// ditto
-template isSortedBy(string comp, seq...)
+template isSorted(string comp, seq...)
 {
-    alias isSortedBy!(binaryT!comp, seq) isSortedBy;
+    alias isSorted!(binaryT!comp, seq) isSorted;
 }
 
 
 unittest
 {
+    struct Scope
+    {
+        template sizeLess(A, B) { enum sizeLess = (A.sizeof < B.sizeof); }
+    }
+    alias Scope.sizeLess sizeLess;
+
+    static assert(isSorted!(sizeLess));
+    static assert(isSorted!(sizeLess, int));
+    static assert(isSorted!(sizeLess, double));
+
+    static assert(isSorted!(sizeLess, short, ushort, int));
+    static assert(isSorted!(sizeLess, ushort, short, int));
+    static assert(isSorted!(sizeLess, int, uint, float, double));
+    static assert(isSorted!(sizeLess, uint, float, int, double));
+
+    static assert(!isSorted!(sizeLess, int, short, double));
+    static assert(!isSorted!(sizeLess, int, int, uint, short));
+}
+
+unittest
+{
+    static assert( meta.isSorted!(q{ A.sizeof < B.sizeof }, byte, short, ushort));
+    static assert(!meta.isSorted!(q{ A.sizeof < B.sizeof }, byte,   int, ushort));
 }
 
 
