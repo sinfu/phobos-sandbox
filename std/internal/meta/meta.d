@@ -4251,11 +4251,11 @@ template _findChunk(alias pred, size_t m)
     {
         static if (pred!(seq[0 .. m]))
         {
-            enum index = 0;
+            enum size_t index = 0;
         }
         else
         {
-            enum index = index!(seq[1 .. $]) + 1;
+            enum size_t index = index!(seq[1 .. $]) + 1;
         }
     }
 
