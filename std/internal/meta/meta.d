@@ -4342,31 +4342,42 @@ unittest
 
 
 /**
-Same as $(D find), but looks for an item that satisfies a unary predicate.
+Looks for the first element of $(D seq) satisfying $(D pred).
 
 Params:
- pred = Unary predicate template or expression string.
-  seq = Sequence to find.
+ pred = Unary predicate template.
+  seq = Target sequence.
+
+Returns:
+ Subsequence of $(D seq) after the found element, if any, inclusive.
+ The empty sequence is returned if not found.
 
 Example:
 ----------
-.
+alias meta.findIf!(q{ is(A == const) },
+                   int, double, const string, bool) Res;
+static assert(is(Res == meta.Seq!(const string, bool)));
 ----------
  */
 template findIf(alias pred, seq...)
 {
-    alias seq[_findChunk!(pred, 1).index!seq .. $] findIf;
-}
-
-/// ditto
-template findIf(string pred, seq...)
-{
-    alias findIf!(unaryT!pred, seq) findIf;
+    alias seq[_findChunk!(unaryT!pred, 1).index!seq .. $] findIf;
 }
 
 
 unittest
 {
+    static assert(findIf!(q{ true }).length == 0);
+
+    static assert([ findIf!(q{ a < 0 }, 5,4,3,2,1,0) ] == []);
+    static assert([ findIf!(q{ a < 0 }, 2,1,0,-1,-2) ] == [ -1,-2 ]);
+}
+
+unittest
+{
+    alias meta.findIf!(q{ is(A == const) },
+                       int, double, const string, bool) Res;
+    static assert(is(Res == meta.Seq!(const string, bool)));
 }
 
 
@@ -4379,12 +4390,13 @@ Params:
  seq = Target sequence.
 
 Returns:
- Subsequence of $(D seq) before $(D E) (exclusive).  The given $(D seq) is
- returned as is if $(D E) is not found.
+ Subsequence of $(D seq) before $(D E) (exclusive).  The passed-in sequence
+ $(D seq) is returned if $(D E) is not found.
 
 Example:
 ----------
-.
+alias meta.until!(void, int, double, void, string) Res;
+static assert(is(Res == meta.Seq!(int, double)));
 ----------
  */
 template until(E, seq...)
@@ -4401,6 +4413,23 @@ template until(alias E, seq...)
 
 unittest
 {
+    static assert(until!(void).length == 0);
+    static assert(until!(   0).length == 0);
+
+    static assert(is(until!(void, int, double) == Seq!(int, double)));
+    static assert(is(until!(   0, int, double) == Seq!(int, double)));
+
+    alias until!(void, int, string, void, void, double) Void;
+    static assert(is(Void == Seq!(int, string)));
+
+    alias until!("opAssign", "toString", "opAssign", "empty") opAss;
+    static assert([ opAss ] == [ "toString" ]);
+}
+
+unittest
+{
+    alias meta.until!(void, int, double, void, string) Res;
+    static assert(is(Res == meta.Seq!(int, double)));
 }
 
 
