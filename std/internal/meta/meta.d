@@ -4281,7 +4281,7 @@ Looks for the first occurrence of $(D E) in $(D seq).
 
 Params:
    E = Compile-time entity to look for.
- seq = Sequence to _find.
+ seq = Target sequence.
 
 Returns:
  Subsequence of $(D seq) after $(D E) (inclusive).  The empty sequence
@@ -4289,7 +4289,15 @@ Returns:
 
 Example:
 ----------
-.
+alias meta.Seq!(int, short, double, bool, string) Types;
+
+alias meta.find!(bool, Types) AfterBool;
+static assert(is(AfterBool == meta.Seq!(bool, string)));
+
+// Take the subsequence after the largest type.
+alias meta.find!(meta.most!(q{ A.sizeof > B.sizeof }, Types),
+                 Types) Sub;
+static assert(is(Sub == meta.Seq!(double, bool, string)));
 ----------
  */
 template find(E, seq...)
@@ -4306,6 +4314,29 @@ template find(alias E, seq...)
 
 unittest
 {
+    static assert(find!(void).length == 0);
+    static assert(find!(   0).length == 0);
+
+    static assert(find!(void, int, string).length == 0);
+    static assert(find!(   0, int, string).length == 0);
+
+    alias find!(void, int, string, void, void, double) Void;
+    static assert(is(Void == Seq!(void, void, double)));
+
+    alias find!("opAssign", "toString", "opAssign", "empty") opAss;
+    static assert([ opAss ] == [ "opAssign", "empty" ]);
+}
+
+unittest
+{
+    alias meta.Seq!(int, short, double, bool, string) Types;
+
+    alias meta.find!(bool, Types) AfterBool;
+    static assert(is(AfterBool == meta.Seq!(bool, string)));
+
+    alias meta.find!(meta.most!(q{ A.sizeof > B.sizeof }, Types),
+                     Types) Sub;
+    static assert(is(Sub == meta.Seq!(double, bool, string)));
 }
 
 
