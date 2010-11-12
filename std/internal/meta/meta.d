@@ -3721,11 +3721,9 @@ unittest
 
 
 
-// XXX: uniq and removeDuplicates?
-
 /**
-Removes any consecutive group of duplicate elements in $(D seq) except
-the first occurrence of each group.
+Removes any consecutive group of duplicate elements in $(D seq) except the
+first one of each group.  Duplicates are detected with $(D meta.isSame).
 
 Params:
  seq = Zero or more compile-time entities.
@@ -3733,7 +3731,7 @@ Params:
 Returns:
  $(D seq) without any consecutive duplicate elements.
 
-Examples:
+Example:
 ----------
 alias meta.uniq!(1, 2, 3, 3, 4, 4, 4, 2, 2) result;
 static assert([ result ] == [ 1, 2, 3, 4, 2 ]);
@@ -3747,6 +3745,23 @@ template uniq(seq...)
 
 unittest
 {
+    alias uniq!() empty;
+    static assert(empty.length == 0);
+
+    alias uniq!(int, double, string) Nodup;
+    static assert(is(Nodup == Seq!(int, double, string)));
+
+    alias uniq!(int, int, double, string, string, string) Dup;
+    static assert(is(Dup == Seq!(int, double, string)));
+
+    alias uniq!("abc", "123", "abc", "123") noConsec;
+    static assert([ noConsec ] == [ "abc", "123", "abc", "123" ]);
+}
+
+unittest
+{
+    alias meta.uniq!(1, 2, 3, 3, 4, 4, 4, 2, 2) result;
+    static assert([ result ] == [ 1, 2, 3, 4, 2 ]);
 }
 
 
