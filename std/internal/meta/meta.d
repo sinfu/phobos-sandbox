@@ -679,8 +679,8 @@ unittest
     static assert(metaComp!(10, -5)); // Yes
     static assert(metaComp!(int, 5));
 
-    alias sortBy!(metaComp,    int, "x", 10, double, "y", 20) s1;
-    alias sortBy!(metaComp, double, "y", 20,    int, "x", 10) s2;
+    alias sort!(metaComp,    int, "x", 10, double, "y", 20) s1;
+    alias sort!(metaComp, double, "y", 20,    int, "x", 10) s2;
     static assert(tag!s1 == tag!(double, int, 10, 20, "x", "y"));
     static assert(tag!s2 == tag!(double, int, 10, 20, "x", "y"));
 }
@@ -3529,50 +3529,45 @@ unittest    // doc tips
 
 
 
-// XXX: sort and sortBy?
-
-
 /**
-Stable _sort for compile-time entities.
+Sorts a sequence according to comparison predicate $(D comp).
 
 Params:
- comp = Binary predicate template or expression string that gives an
-        ordering to elements of $(D seq).  It typically works as the
-        $(D <) operator to arrange the result in increasing order.
+ comp = Binary comparison predicate that compares elements of $(D seq).
+        It typically works as the $(D <) operator to arrange the result in
+        ascending order.
   seq = Sequence to _sort.
 
 Returns:
- Sequence $(D seq) sorted in terms of the ordering $(D comp).
-
- The sorting algorithm is stable, so the relative order of equivalent
- elements of $(D seq) will be preserved.
+ Sequence $(D seq) sorted according to the predicate $(D comp).  The relative
+ order of equivalent elements will be preserved (i.e. stable).
 
 Example:
 ----------
-.
+// Sort types in terms of the sizes.
+alias meta.Seq!(double, int, bool, uint, short) Types;
+
+alias meta.sort!(q{ A.sizeof < B.sizeof }, Types) Inc;
+alias meta.sort!(q{ A.sizeof > B.sizeof }, Types) Dec;
+
+static assert(is( Inc == meta.Seq!(bool, short, int, uint, double) ));
+static assert(is( Dec == meta.Seq!(double, int, uint, short, bool) ));
 ----------
  */
-template sortBy(alias comp, seq...)
+template sort(alias comp, seq...)
 {
     static if (seq.length < 2)
     {
-        alias seq sortBy;
+        alias seq sort;
     }
     else
     {
-         alias _Merger!comp.Merge!(sortBy!(comp, seq[ 0  .. $/2]))
-                            .With!(sortBy!(comp, seq[$/2 ..  $ ])) sortBy;
+         alias _sort!(variadicT!comp).Merge!(sort!(comp, seq[ 0  .. $/2]))
+                                      .With!(sort!(comp, seq[$/2 ..  $ ])) sort;
     }
 }
 
-/// ditto
-template sortBy(string comp, seq...)
-{
-    alias sortBy!(binaryT!comp, seq) sortBy;
-}
-
-
-private template _Merger(alias comp)
+private template _sort(alias comp)
 {
     template Merge()
     {
@@ -3607,17 +3602,44 @@ private template _Merger(alias comp)
 
 unittest
 {
-    alias Seq!(
-         73,  42,  71,   8, 194, 200,  57, 163,  31, 166,   7,
-        217,  64, 136,  14,  52,  45, 132, 239, 111,  51,   1,
-          3,  40, 227,  44, 190, 133,   5,  40, 226,  61,  57,
-        255, 221,  85, 123, 152, 110,  17,   5,  99, 119, 222,
-         95,  22,  82,  91, 211, 208, 149, 174, 183, 235, 153) rand;
-    alias sortBy!("a < b", rand) inc;
-    alias sortBy!("a > b", rand) dec;
-    static assert(isSortedBy!("a < b", inc));
-    static assert(isSortedBy!("a > b", dec));
-    static assert([ reverse!inc ] == [ dec ]);
+    struct Scope
+    {
+        template sizeLess(A, B) { enum sizeLess = (A.sizeof < B.sizeof); }
+    }
+    alias Scope.sizeLess sizeLess;
+
+    // Trivial cases
+    alias sort!(sizeLess) Empty;
+    alias sort!(sizeLess, int) Single;
+    static assert(is(Empty == Seq!()));
+    static assert(is(Single == Seq!(int)));
+
+    //
+    alias sort!(sizeLess, int, short) Double;
+    static assert(is(Double == Seq!(short, int)));
+
+    alias sort!(sizeLess, long, int, short, byte) Sorted1;
+    alias sort!(sizeLess, short, int, byte, long) Sorted2;
+    static assert(is(Sorted1 == Seq!(byte, short, int, long)));
+    static assert(is(Sorted2 == Seq!(byte, short, int, long)));
+
+    static assert([ sort!(q{ a < b }, 3,5,1,4,2) ] == [ 1,2,3,4,5 ]);
+    static assert([ sort!(q{ a > b }, 3,5,1,4,2) ] == [ 5,4,3,2,1 ]);
+
+    // Test for stability
+    alias sort!(sizeLess, uint, short, ushort, int) Equiv;
+    static assert(is(Equiv == Seq!(short, ushort, uint, int)));
+}
+
+unittest    // doc example
+{
+    alias meta.Seq!(double, int, bool, uint, short) Types;
+
+    alias meta.sort!(q{ A.sizeof < B.sizeof }, Types) Inc;
+    alias meta.sort!(q{ A.sizeof > B.sizeof }, Types) Dec;
+
+    static assert(is( Inc == meta.Seq!(bool, short, int, uint, double) ));
+    static assert(is( Dec == meta.Seq!(double, int, uint, short, bool) ));
 }
 
 
@@ -4635,7 +4657,7 @@ unittest    // doc example
 
 version (unittest) template _set(seq...)
 {
-    alias tag!(sortBy!(metaComp, seq)) _set;
+    alias tag!(sort!(metaComp, seq)) _set;
 }
 
 
@@ -4686,8 +4708,8 @@ unittest
 /* undocumented */
 template setIntersectionBy(alias comp, alias A, alias B)
 {
-    alias _SetIntersection!comp.merge!(sortBy!(comp, A.expand))
-                               ._with!(sortBy!(comp, B.expand))
+    alias _SetIntersection!comp.merge!(sort!(comp, A.expand))
+                               ._with!(sort!(comp, B.expand))
           setIntersectionBy;
 }
 
@@ -4777,8 +4799,8 @@ unittest
 /* undocumented */
 template setUnionBy(alias comp, alias A, alias B)
 {
-    alias _SetUnion!comp.merge!(sortBy!(comp, A.expand))
-                        ._with!(sortBy!(comp, B.expand)) setUnionBy;
+    alias _SetUnion!comp.merge!(sort!(comp, A.expand))
+                        ._with!(sort!(comp, B.expand)) setUnionBy;
 }
 
 
