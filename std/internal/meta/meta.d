@@ -4435,28 +4435,43 @@ unittest
 
 
 /**
-Same as $(D until), but stops at an item that satisfies a unary predicate.
+Slices sequence $(D seq) until encoutering an element satisfying $(D pred).
 
 Params:
- pred = Unary predicate template or expression string.
+ pred = Unary predicate template.
   seq = Target sequence.
 
 Returns:
- .
+ Subsequence of $(D seq) before the found element, if any, exclusive.
+ The passed-in sequence $(D seq) is returned if not found.
 
 Example:
 ----------
-.
+alias meta.untilIf!(q{ is(A == const) },
+                    int, double, const string, bool) Res;
+static assert(is(Res == meta.Seq!(int, double)));
 ----------
  */
 template untilIf(alias pred, seq...)
 {
-    alias seq[0 .. _findChunk!(pred, 1).index!seq] untilIf;
+    alias seq[0 .. _findChunk!(unaryT!pred, 1).index!seq] untilIf;
 }
 
 
 unittest
 {
+    static assert(untilIf!(q{ true }).length == 0);
+
+    static assert([ untilIf!(q{ a < 0 }, 5,4,3,2,1,0) ] == [ 5,4,3,2,1,0 ]);
+    static assert([ untilIf!(q{ a < 0 }, 2,1,0,-1,-2) ] == [ 2,1,0 ]);
+    static assert([ untilIf!(q{ a < 0 }, -1,-2,-3,-4) ] == []);
+}
+
+unittest
+{
+    alias meta.untilIf!(q{ is(A == const) },
+                        int, double, const string, bool) Res;
+    static assert(is(Res == meta.Seq!(int, double)));
 }
 
 
