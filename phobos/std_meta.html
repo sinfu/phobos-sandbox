@@ -149,6 +149,10 @@ The following code passes three separate sequences to <span class="d_inlinecode"
 <dd>Returns the number of entities: <span class="d_inlinecode">seq.<a name="length"></a><u>length</u></span>.<p></p>
 
 </dd>
+<dt><div class="d_decl">template <a name="at"></a><u>at</u>(size_t i) if (i &lt; length)</div></dt>
+<dd>Extracts the <span class="d_inlinecode">i</span>-th element of the packed sequence.<p></p>
+
+</dd>
 </dl>
 </dd>
 <dt><div class="d_decl">template <a name="isSame"></a><u>isSame</u>(A,B)<br>template <a name="isSame"></a><u>isSame</u>(A,alias B) if (!isType!(B))<br>template <a name="isSame"></a><u>isSame</u>(alias A,B) if (!isType!(A))<br>template <a name="isSame"></a><u>isSame</u>(alias A,alias B) if (!isType!(A) &amp;&amp; !isType!(B))</div></dt>
@@ -502,6 +506,23 @@ will instantiate <span class="d_inlinecode">templat</span> with just the bound a
 <p></p>
 
 </dd>
+<dt><div class="d_decl">template <a name="constant"></a><u>constant</u>(E)<br>template <a name="constant"></a><u>constant</u>(alias E)<br>template <a name="constant"></a><u>constant</u>()</div></dt>
+<dd>Generates a template that constantly evaluates to <span class="d_inlinecode">E</span>.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>E</td>
+<td valign=top>Compile-time entity to hold.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Variadic template that ignores its arguments and just returns <span class="d_inlinecode">E</span>.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">constant</span>!<span class="d_keyword">int</span> Int;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Int!() == <span class="d_keyword">int</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Int!(<span class="d_keyword">double</span>, string) == <span class="d_keyword">int</span>));
+</pre>
+<p></p>
+
+</dd>
 <dt><div class="d_decl">template <a name="not"></a><u>not</u>(alias pred)<br>template <a name="not"></a><u>not</u>(string pred)</div></dt>
 <dd>Creates a predicate template that inverts the result of the given one.
 <p></p>
@@ -514,7 +535,7 @@ will instantiate <span class="d_inlinecode">templat</span> with just the bound a
 
 <p></p>
 <b>Example:</b><br>
-Passing an inverted predicate to the <span class="d_inlinecode">meta.countBy</span>.
+Passing an inverted predicate to the <span class="d_inlinecode">meta.countIf</span>.
 <pre class="d_code"><span class="d_keyword">template</span> isStruct(T)
 {
     <span class="d_keyword">enum</span> isStruct = <span class="d_keyword">is</span>(T == <span class="d_keyword">struct</span>) || <span class="d_keyword">is</span>(T == <span class="d_keyword">union</span>);
@@ -525,7 +546,7 @@ Passing an inverted predicate to the <span class="d_inlinecode">meta.countBy</sp
 <span class="d_keyword">class</span>  C {}
 
 <span class="d_comment">// Count non-struct types in the sequence.
-</span><span class="d_keyword">enum</span> n = meta.countBy!(meta.<span class="d_psymbol">not</span>!isStruct,
+</span><span class="d_keyword">enum</span> n = meta.countIf!(meta.<span class="d_psymbol">not</span>!isStruct,
                        <span class="d_keyword">int</span>, <span class="d_keyword">double</span>, S, U, C);
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(n == 3);
 </pre>
@@ -551,18 +572,13 @@ remaining predicates.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"><span class="d_keyword">template</span> isIntegral(T)
-{
-    <span class="d_keyword">enum</span> isIntegral = meta.any!(meta.isSame!T,
-                                <span class="d_keyword">byte</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">long</span>,
-                                <span class="d_keyword">ubyte</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">ulong</span>);
-}
-
-<span class="d_comment">// Look for a tiny integral type: byte.
-</span><span class="d_keyword">enum</span> k = meta.indexBy!(meta.<span class="d_psymbol">and</span>!(isIntegral, <span class="d_string">q{ A.sizeof &lt; 4 }</span>),
-                       <span class="d_keyword">int</span>, <span class="d_keyword">void</span>, <span class="d_keyword">double</span>, <span class="d_keyword">byte</span>, string);
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(k == 3);
-</pre>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">and</span>!(meta.isType, <span class="d_string">q{ is(A : long) }</span>, <span class="d_string">q{ A.min &lt; 0 }</span>) isSignedInt;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isSignedInt!<span class="d_keyword">short</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>( isSignedInt!<span class="d_keyword">int</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isSignedInt!<span class="d_keyword">uint</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isSignedInt!string);     <span class="d_comment">// stops at the second predicate
+</span><span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!isSignedInt!<span class="d_string">"wrong"</span>);    <span class="d_comment">// stops at the first predicate
+</span></pre>
 <p></p>
 
 </dd>
@@ -593,7 +609,7 @@ remaining predicates.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="compose"></a><u>compose</u>(templates...) if (templates.length &gt; 0)</div></dt>
+<dt><div class="d_decl">template <a name="compose"></a><u>compose</u>(templates...)</div></dt>
 <dd><span class="d_inlinecode">meta.<a name="compose"></a><u>compose</u>!(t1, t2, ..., tn)</span> returns a variadic template that in
 turn instantiates the passed in templates in a chaining way:
 <pre class="d_code"><span class="d_keyword">template</span> composition(args...)
@@ -651,9 +667,66 @@ as follows:
 <b>Example:</b><br>
 <pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">guard</span>!(<span class="d_string">q{ A.min &lt; 0 }</span>, <span class="d_string">q{ false }</span>) hasNegativeMin;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>( hasNegativeMin!<span class="d_keyword">int</span>);
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">uint</span>);    <span class="d_comment">// uint.min is non-negative
-</span><span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">void</span>);    <span class="d_comment">// void.min is not defined
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">uint</span>);
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!hasNegativeMin!<span class="d_keyword">void</span>);    <span class="d_comment">// void.min is not defined!
 </span></pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="conditional"></a><u>conditional</u>(alias pred,alias then,alias otherwise = meta.Id)</div></dt>
+<dd>Generates a template that conditionally instantiates either <span class="d_inlinecode">then</span> or
+<span class="d_inlinecode">otherwise</span> depending on the result of <span class="d_inlinecode">pred</span>.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
+<td valign=top>Predicate template.</td></tr>
+<tr><td valign=top>then</td>
+<td valign=top>Template to instantiate when <span class="d_inlinecode">pred</span> is satisfied.</td></tr>
+<tr><td valign=top>otherwise</td>
+<td valign=top>Template to instantiate when <span class="d_inlinecode">pred</span> is not satisfied.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Variadic template that instantiates <span class="d_inlinecode">then</span> with its arguments if the
+ arguments satisfy <span class="d_inlinecode">pred</span>, or instantiates <span class="d_inlinecode">otherwise</span> with the same
+ arguments if not.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">import</span> std.meta, std.traits, std.typecons;
+
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">conditional</span>!(<span class="d_string">q{ is(A == class) }</span>, Rebindable, Unqual) NoTopConst;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>( NoTopConst!(<span class="d_keyword">const</span> Object) == Rebindable!(<span class="d_keyword">const</span> Object) ));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>( NoTopConst!(<span class="d_keyword">const</span> <span class="d_keyword">int</span>[]) == <span class="d_keyword">const</span>(<span class="d_keyword">int</span>)[] ));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>( NoTopConst!(<span class="d_keyword">const</span> <span class="d_keyword">int</span>) == <span class="d_keyword">int</span> ));
+</pre>
+<p></p>
+
+</dd>
+<dt><div class="d_decl">template <a name="apply"></a><u>apply</u>(alias templat,args...)<br>template <a name="apply"></a><u>apply</u>(string templat,args...)</div></dt>
+<dd>Instantiates <span class="d_inlinecode">templat</span> with the specified arguments.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>templat</td>
+<td valign=top>Template to instantiate.  The argument can be a pure template or
+           a string that can be transformed into a pure template using
+           <span class="d_inlinecode">meta.variadicT</span>.</td></tr>
+<tr><td valign=top>args</td>
+<td valign=top>The instantiation arguments to pass to <span class="d_inlinecode">templat</span>.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>The result: <span class="d_inlinecode">templat!args</span>.
+
+<p></p>
+<b>Example:</b><br>
+Due to a syntactical limitation of the language, templates generated by
+ higher-order templates (such as <span class="d_inlinecode">meta.guard</span>) can't be instantiated
+ directly.  Use <span class="d_inlinecode">meta.<a name="apply"></a><u>apply</u></span> to instantiate such kind of temporary templates.
+<pre class="d_code"><span class="d_keyword">template</span> Example(Arg)
+{
+    <span class="d_keyword">static</span> <span class="d_keyword">if</span> (meta.<span class="d_psymbol">apply</span>!(meta.guard!(<span class="d_string">q{ A.min &lt; 0 }</span>,
+                                       <span class="d_string">q{     false }</span>), Arg))
+    {
+        <span class="d_comment">// ...
+</span>    }
+}
+</pre>
 <p></p>
 
 </dd>
@@ -781,16 +854,13 @@ and takes the first <span class="d_inlinecode">n</span> results:
 
 <p></p>
 <b>Example:</b><br>
-Filling a continuous region in a table with specific values.
-<pre class="d_code"><span class="d_keyword">enum</span> CharType { other, digit, alpha }
-
-<span class="d_keyword">static</span> <span class="d_keyword">immutable</span> CharType[256] charTypeTab =
-[
-    '0': meta.<span class="d_psymbol">repeat</span>!(10, CharType.digit),
-    'A': meta.<span class="d_psymbol">repeat</span>!(26, CharType.alpha),
-    'a': meta.<span class="d_psymbol">repeat</span>!(26, CharType.alpha),
-];
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(charTypeTab['M'] == CharType.alpha);
+<pre class="d_code"><span class="d_keyword">static</span> <span class="d_keyword">immutable</span> array =
+    [
+        meta.<span class="d_psymbol">repeat</span>!(3, 1,2,3),
+        meta.<span class="d_psymbol">repeat</span>!(3, 4,5,6),
+    ];
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(array == [ 1,2,3, 1,2,3, 1,2,3,
+                         4,5,6, 4,5,6, 4,5,6 ]);
 </pre>
 <p></p>
 
@@ -1037,13 +1107,13 @@ of packing with <span class="d_inlinecode">meta.pack</span>.
 <dd>Transforms a sequence <span class="d_inlinecode">seq</span> into <span class="d_inlinecode">(fun!(seq[0]), fun!(seq[1]), ...)</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Unary template or expression string that maps each element of
-       <span class="d_inlinecode">seq</span> into another compile-time entity.  Its result may also
-       be a sequence of any length.</td></tr>
+<td valign=top>Unary template used to transform each element of <span class="d_inlinecode">seq</span> into another
+       compile-time entity.  The result can be a sequence.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence of compile-time entities.</td></tr>
+<td valign=top>Sequence of compile-time entities to transform.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence of the results of <span class="d_inlinecode">fun</span> applied to each element of <span class="d_inlinecode">seq</span> in
+ turn.
 
 <p></p>
 <b>Examples:</b><br>Map types into pointers.
@@ -1053,191 +1123,214 @@ of packing with <span class="d_inlinecode">meta.pack</span>.
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(PP[2] ==  <span class="d_keyword">void</span>**));
 </pre>
 
- Doubling elements by passing a template returning a sequence.
-<pre class="d_code"><span class="d_comment">// Twice = (int, int, bool, bool, string, string)
-</span><span class="d_keyword">alias</span> meta.<span class="d_psymbol">map</span>!(meta.bind!(meta.repeat, 2),
-                <span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, string) Twice;
+ Doubling elements:
+<pre class="d_code"><span class="d_keyword">static</span> <span class="d_keyword">assert</span>([ meta.<span class="d_psymbol">map</span>!(<span class="d_string">q{ meta.Seq!(a, a) }</span>, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="filter"></a><u>filter</u>(alias pred,seq...)<br>template <a name="filter"></a><u>filter</u>(string pred,seq...)</div></dt>
-<dd>Filters those items satisfying <span class="d_inlinecode">pred</span> out of a sequence <span class="d_inlinecode">seq</span>.
+<dt><div class="d_decl">template <a name="filter"></a><u>filter</u>(alias pred,seq...)</div></dt>
+<dd>Creates a sequence only containing elements of <span class="d_inlinecode">seq</span> satisfying <span class="d_inlinecode">pred</span>.
 <p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>fun</td>
-<td valign=top>Unary template or expression string that maps a compile-time
-       entity into a boolean value.</td></tr>
+<b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
+<td valign=top>Unary predicate template that decides whether or not to include an
+        element in the resulting sequence.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence of compile-time entities.</td></tr>
+<td valign=top>Sequence to filter.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.
+<b>Returns:</b><br>Sequence only containing elements of <span class="d_inlinecode">seq</span> for each of which <span class="d_inlinecode">pred</span>
+ evaluates to <span class="d_inlinecode"><b>true</b></span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">filter</span>!(<span class="d_string">q{ A.sizeof &lt; 4 }</span>, <span class="d_keyword">byte</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">long</span>) SmallTypes;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(SmallTypes == meta.Seq!(<span class="d_keyword">byte</span>, <span class="d_keyword">short</span>)));
 </pre>
 <p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="remove"></a><u>remove</u>(E,seq...)<br>template <a name="remove"></a><u>remove</u>(alias E,seq...)</div></dt>
-<dd>Removes all occurrences of <span class="d_inlinecode">E</span> in <span class="d_inlinecode">seq</span>.
+<dd>Removes all occurrences of <span class="d_inlinecode">E</span> in <span class="d_inlinecode">seq</span> if any.  Each occurrence is
+tested in terms of <span class="d_inlinecode">meta.isSame</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>E</td>
-<td valign=top>Compile-time entity to <a name="remove"></a><u>remove</u> from <span class="d_inlinecode">seq</span>.</td></tr>
+<td valign=top>Compile-time entity to remove.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>.</td></tr>
+<td valign=top>Target sequence.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence of elements of <span class="d_inlinecode">seq</span> except <span class="d_inlinecode">E</span>.
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> in which any occurrence of <span class="d_inlinecode">E</span> is erased.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">remove</span>!(<span class="d_keyword">void</span>, <span class="d_keyword">int</span>, <span class="d_keyword">void</span>, <span class="d_keyword">double</span>, <span class="d_keyword">void</span>, string) Res;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Res == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, string)));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="removeBy"></a><u>removeBy</u>(alias pred,seq...)</div></dt>
-<dd>Removes any elements of <span class="d_inlinecode">seq</span> satisfying the predicate <span class="d_inlinecode">pred</span>.
-<p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
-<td valign=top>Unary predicate template or expression string that evaluates
-        each element of <span class="d_inlinecode">seq</span> as a boolean value.</td></tr>
-<tr><td valign=top>seq</td>
-<td valign=top>.</td></tr>
-</table><p></p>
-<b>Returns:</b><br>Sequence of elements of <span class="d_inlinecode">seq</span> not satisfying <span class="d_inlinecode">pred</span>.
-
-<p></p>
-<b>Example:</b><br>
-<pre class="d_code">.
-</pre>
-<p></p>
-
-</dd>
-<dt><div class="d_decl">template <a name="partition"></a><u>partition</u>(alias pred,seq...)</div></dt>
-<dd>Partitions <span class="d_inlinecode">seq</span> into two sequences <span class="d_inlinecode">.accepted</span> and <span class="d_inlinecode">.rejected</span>
-which do and do not satisfy <span class="d_inlinecode">pred</span>.
-<p></p>
-<b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
-<td valign=top>Unary predicate template or expression string.</td></tr>
-<tr><td valign=top>seq</td>
-<td valign=top>Sequence to partition.</td></tr>
-</table><p></p>
-<b>Returns:</b><br>The two sequences <span class="d_inlinecode">.accepted</span> and <span class="d_inlinecode">.rejected</span>.
-
-<p></p>
-<b>Example:</b><br>
-Partitioning a sequence of types into interface and others.
-<pre class="d_code"><span class="d_keyword">class</span> C {}
-<span class="d_keyword">interface</span> I {}
-<span class="d_keyword">abstract</span> <span class="d_keyword">class</span> A {}
-
-<span class="d_keyword">alias</span> meta.<span class="d_psymbol">partition</span>!(<span class="d_string">q{ is(A == interface) }</span>, C, I, A) result;
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(result.accepted == meta.Seq!(I   )));
-<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(result.rejected == meta.Seq!(C, A)));
-</pre>
-<p></p>
-
-</dd>
-<dt><div class="d_decl">template <a name="replace"></a><u>replace</u>(From,To,seq...)<br>template <a name="replace"></a><u>replace</u>(alias From,To,seq...)<br>template <a name="replace"></a><u>replace</u>(From,alias To,seq...)<br>template <a name="replace"></a><u>replace</u>(alias From,alias To,seq...)</div></dt>
+<dt><div class="d_decl">template <a name="replace"></a><u>replace</u>(From,To,seq...)<br>template <a name="replace"></a><u>replace</u>(alias From,To,seq...) if (!isType!(From))<br>template <a name="replace"></a><u>replace</u>(From,alias To,seq...) if (!isType!(To))<br>template <a name="replace"></a><u>replace</u>(alias From,alias To,seq...) if (!isType!(From) &amp;&amp; !isType!(To))</div></dt>
 <dd>Replaces all occurrences of <span class="d_inlinecode">From</span> in <span class="d_inlinecode">seq</span> with <span class="d_inlinecode">To</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>From</td>
-<td valign=top>Compile-time entity to remove from <span class="d_inlinecode">seq</span>.</td></tr>
+<td valign=top>Element to remove.</td></tr>
 <tr><td valign=top>To</td>
-<td valign=top>Compile-time entity to insert in place of <span class="d_inlinecode">From</span>.</td></tr>
+<td valign=top>Element to insert in place of <span class="d_inlinecode">From</span>.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence to perform replacement.</td></tr>
+<td valign=top>Sequence to perform replacements.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> in which all occurrences of <span class="d_inlinecode">From</span> are replaced
- with <span class="d_inlinecode">To</span>.
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> in which every occurrence of <span class="d_inlinecode">From</span> (if any) is
+ replaced by <span class="d_inlinecode">To</span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_keyword">struct</span> This;
+
+<span class="d_keyword">struct</span> Example(Params...)
+{
+    <span class="d_comment">// Resolve 'This'
+</span>    <span class="d_keyword">alias</span> meta.<span class="d_psymbol">replace</span>!(This, Example!Params, Params) Types;
+}
+<span class="d_keyword">alias</span> Example!(<span class="d_keyword">int</span>, <span class="d_keyword">double</span>, This) Ex;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Ex.Types[2] == Ex));
+</pre>
+
+<p></p>
+<b>Tips:</b><br>
+You may want to use <span class="d_inlinecode">meta.map</span> with <span class="d_inlinecode">meta.conditional</span> to perform more
+ complex replacements.  The following example replaces every const types in a
+ type sequence with a <span class="d_inlinecode">void</span>.
+<pre class="d_code"><span class="d_keyword">alias</span> meta.map!(meta.conditional!(<span class="d_string">q{ is(A == const) }</span>, meta.constant!<span class="d_keyword">void</span>),
+                <span class="d_keyword">int</span>, <span class="d_keyword">const</span> <span class="d_keyword">double</span>, string, <span class="d_keyword">const</span> <span class="d_keyword">bool</span>) Res;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Res == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">void</span>, string, <span class="d_keyword">void</span>)));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="sortBy"></a><u>sortBy</u>(alias comp,seq...)<br>template <a name="sortBy"></a><u>sortBy</u>(string comp,seq...)</div></dt>
-<dd>Stable sort for compile-time entities.
+<dt><div class="d_decl">template <a name="sort"></a><u>sort</u>(alias comp,seq...)</div></dt>
+<dd>Sorts a sequence according to comparison predicate <span class="d_inlinecode">comp</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>comp</td>
-<td valign=top>Binary predicate template or expression string that gives an
-        ordering to elements of <span class="d_inlinecode">seq</span>.  It typically works as the
-        <span class="d_inlinecode">&lt;</span> operator to arrange the result in increasing order.</td></tr>
+<td valign=top>Binary comparison predicate that compares elements of <span class="d_inlinecode">seq</span>.
+        It typically works as the <span class="d_inlinecode">&lt;</span> operator to arrange the result in
+        ascending order.</td></tr>
 <tr><td valign=top>seq</td>
 <td valign=top>Sequence to sort.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> sorted in terms of the ordering <span class="d_inlinecode">comp</span>.
-<p></p>
-
- The sorting algorithm is stable, so the relative order of equivalent
- elements of <span class="d_inlinecode">seq</span> will be preserved.
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> sorted according to the predicate <span class="d_inlinecode">comp</span>.  The relative
+ order of equivalent elements will be preserved (i.e. stable).
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code">.
+<pre class="d_code"><span class="d_comment">// Sort types in terms of the sizes.
+</span><span class="d_keyword">alias</span> meta.Seq!(<span class="d_keyword">double</span>, <span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">short</span>) Types;
+
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">sort</span>!(<span class="d_string">q{ A.sizeof &lt; B.sizeof }</span>, Types) Inc;
+<span class="d_keyword">alias</span> meta.<span class="d_psymbol">sort</span>!(<span class="d_string">q{ A.sizeof &gt; B.sizeof }</span>, Types) Dec;
+
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>( Inc == meta.Seq!(<span class="d_keyword">bool</span>, <span class="d_keyword">short</span>, <span class="d_keyword">int</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">double</span>) ));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>( Dec == meta.Seq!(<span class="d_keyword">double</span>, <span class="d_keyword">int</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">short</span>, <span class="d_keyword">bool</span>) ));
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="isSortedBy"></a><u>isSortedBy</u>(alias comp,seq...)<br>template <a name="isSortedBy"></a><u>isSortedBy</u>(string comp,seq...)</div></dt>
-<dd>Determines if <span class="d_inlinecode">seq</span> is sorted in terms of the ordering <span class="d_inlinecode">comp</span>.
+<dt><div class="d_decl">template <a name="isSorted"></a><u>isSorted</u>(alias comp,seq...)</div></dt>
+<dd>Determines if <span class="d_inlinecode">seq</span> is sorted according to <span class="d_inlinecode">comp</span>.  <span class="d_inlinecode">seq</span> is sorted
+if and only if <span class="d_inlinecode">meta.sort!(comp, seq)</span> matches <span class="d_inlinecode">seq</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>comp</td>
-<td valign=top>.</td></tr>
+<td valign=top>Binary comparison template.</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>.</td></tr>
+<td valign=top>Sequence to examine.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>.  <span class="d_inlinecode"><b>true</b></span> is returned if <span class="d_inlinecode">seq.length</span> is less than <span class="d_inlinecode">2</span>.
+<b>Returns:</b><br><span class="d_inlinecode"><b>true</b></span> iff, for any valid indices <span class="d_inlinecode">i &gt; j</span>, <span class="d_inlinecode">comp!(seq[i], seq[j])</span>
+ evaluates to <span class="d_inlinecode"><b>false</b></span>.
 
 <p></p>
 <b>Example:</b><br>
-<pre class="d_code"> .
+The second sequence in the following example is not sorted since
+ <span class="d_inlinecode">ushort.sizeof &lt; int.sizeof</span> is <b>true</b>.
+<pre class="d_code"><span class="d_keyword">static</span> <span class="d_keyword">assert</span>( meta.<span class="d_psymbol">isSorted</span>!(<span class="d_string">q{ A.sizeof &lt; B.sizeof }</span>, <span class="d_keyword">byte</span>, <span class="d_keyword">short</span>, <span class="d_keyword">ushort</span>));
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(!meta.<span class="d_psymbol">isSorted</span>!(<span class="d_string">q{ A.sizeof &lt; B.sizeof }</span>, <span class="d_keyword">byte</span>,   <span class="d_keyword">int</span>, <span class="d_keyword">ushort</span>));
 </pre>
 <p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="uniq"></a><u>uniq</u>(seq...)</div></dt>
-<dd>Removes any consecutive group of duplicate elements in <span class="d_inlinecode">seq</span> except
-the first occurrence of each group.
+<dd>Removes any consecutive group of duplicate elements in <span class="d_inlinecode">seq</span> except the
+first one of each group.  Duplicates are detected with <span class="d_inlinecode">meta.isSame</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>seq</td>
-<td valign=top>Zero or more compile-time entities.</td></tr>
+<td valign=top>Target sequence.</td></tr>
 </table><p></p>
 <b>Returns:</b><br><span class="d_inlinecode">seq</span> without any consecutive duplicate elements.
 
 <p></p>
-<b>Examples:</b><br><pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">uniq</span>!(1, 2, 3, 3, 4, 4, 4, 2, 2) result;
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">uniq</span>!(1, 2, 3, 3, 4, 4, 4, 2, 2) result;
 <span class="d_keyword">static</span> <span class="d_keyword">assert</span>([ result ] == [ 1, 2, 3, 4, 2 ]);
 </pre>
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="uniqBy"></a><u>uniqBy</u>(alias eq,seq...)<br>template <a name="uniqBy"></a><u>uniqBy</u>(string eq,seq...)</div></dt>
-<dd>Generalization of the <span class="d_inlinecode">meta.uniq</span>.<p></p>
+<dt><div class="d_decl">template <a name="uniqBy"></a><u>uniqBy</u>(alias eq,seq...)</div></dt>
+<dd>Generalization of <span class="d_inlinecode">meta.uniq</span> detecting duplicates with <span class="d_inlinecode">eq</span>, instead
+of <span class="d_inlinecode">meta.isSame</span>.
+<p></p>
+<b>Parameters:</b><table class=parms><tr><td valign=top>eq</td>
+<td valign=top>Binary predicate template that determines if passed-in arguments are
+       the same (or duplicated).</td></tr>
+<tr><td valign=top>seq</td>
+<td valign=top>Target sequence.</td></tr>
+</table><p></p>
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> in which any consecutive group of duplicate elements are
+ squeezed into the fist one of each group.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">uniqBy</span>!(<span class="d_string">q{ A.sizeof == B.sizeof }</span>,
+                   <span class="d_keyword">int</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">short</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">uint</span>) Res;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Res == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">short</span>, <span class="d_keyword">uint</span>)));
+</pre>
+<p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="removeDuplicates"></a><u>removeDuplicates</u>(seq...)</div></dt>
-<dd>Removes all duplicate elements in <span class="d_inlinecode">seq</span> except the first occurrence.
+<dd>Completely removes all duplicate elements in <span class="d_inlinecode">seq</span> except the first one.
+Duplicates are detected with <span class="d_inlinecode">meta.isSame</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>seq</td>
-<td valign=top>Sequence to eliminate duplicate elements.</td></tr>
+<td valign=top>Target sequence.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> without duplicate elements.<p></p>
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> without any duplicate elements.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">removeDuplicates</span>!(<span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, <span class="d_keyword">bool</span>, <span class="d_keyword">int</span>, string) Res;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Res == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">bool</span>, string)));
+</pre>
+<p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="removeDuplicatesBy"></a><u>removeDuplicatesBy</u>(alias eq,seq...)</div></dt>
-<dd>Generalization of the <span class="d_inlinecode">meta.removeDups</span>.  It detects duplicate
-elements with a specified equality instead of the <span class="d_inlinecode">meta.isSame</span>.
+<dd>Generalization of <span class="d_inlinecode">meta.removeDuplicates</span> detecting duplicates with
+<span class="d_inlinecode">eq</span>, instead of <span class="d_inlinecode">meta.isSame</span>.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>eq</td>
-<td valign=top>Binary template that compares parameters for equality.</td></tr>
+<td valign=top>Binary predicate template that determines if passed-in arguments are
+       the same (or duplicated).</td></tr>
 <tr><td valign=top>seq</td>
-<td valign=top>Sequence to eliminate duplicates.</td></tr>
+<td valign=top>Target sequence.</td></tr>
 </table><p></p>
-<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> without duplicates in terms of <span class="d_inlinecode">eq</span>.<p></p>
+<b>Returns:</b><br>Sequence <span class="d_inlinecode">seq</span> in which any group of duplicate elements are eliminated
+ except the fist one of each group.
+
+<p></p>
+<b>Example:</b><br>
+<pre class="d_code"><span class="d_keyword">alias</span> meta.<span class="d_psymbol">removeDuplicatesBy</span>!(<span class="d_string">q{ A.sizeof == B.sizeof }</span>,
+                               <span class="d_keyword">int</span>, <span class="d_keyword">uint</span>, <span class="d_keyword">short</span>, <span class="d_keyword">ushort</span>, <span class="d_keyword">uint</span>) Res;
+<span class="d_keyword">static</span> <span class="d_keyword">assert</span>(<span class="d_keyword">is</span>(Res == meta.Seq!(<span class="d_keyword">int</span>, <span class="d_keyword">short</span>)));
+</pre>
+<p></p>
 
 </dd>
 <dt><div class="d_decl">template <a name="reduce"></a><u>reduce</u>(alias fun,Seed,seq...)<br>template <a name="reduce"></a><u>reduce</u>(alias fun,alias Seed,seq...)</div></dt>
@@ -1346,7 +1439,7 @@ To get the largest element in the sequence, specify a greater-than operator
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="findBy"></a><u>findBy</u>(alias pred,seq...)<br>template <a name="findBy"></a><u>findBy</u>(string pred,seq...)</div></dt>
+<dt><div class="d_decl">template <a name="findIf"></a><u>findIf</u>(alias pred,seq...)<br>template <a name="findIf"></a><u>findIf</u>(string pred,seq...)</div></dt>
 <dd>Same as <span class="d_inlinecode">find</span>, but looks for an item that satisfies a unary predicate.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
@@ -1378,7 +1471,7 @@ To get the largest element in the sequence, specify a greater-than operator
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="untilBy"></a><u>untilBy</u>(alias pred,seq...)</div></dt>
+<dt><div class="d_decl">template <a name="untilIf"></a><u>untilIf</u>(alias pred,seq...)</div></dt>
 <dd>Same as <span class="d_inlinecode">until</span>, but stops at an item that satisfies a unary predicate.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
@@ -1413,8 +1506,8 @@ returned if <span class="d_inlinecode">E</span> is not found.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="indexBy"></a><u>indexBy</u>(alias pred,seq...)</div></dt>
-<dd>Same as evaluating <span class="d_inlinecode">untilBy!(pred, seq).length</span> except that <span class="d_inlinecode">-1</span> is
+<dt><div class="d_decl">template <a name="indexIf"></a><u>indexIf</u>(alias pred,seq...)</div></dt>
+<dd>Same as evaluating <span class="d_inlinecode">untilIf!(pred, seq).length</span> except that <span class="d_inlinecode">-1</span> is
 returned if no element satisfies the predicate.
 <p></p>
 <b>Parameters:</b><table class=parms><tr><td valign=top>pred</td>
@@ -1448,7 +1541,7 @@ returned if no element satisfies the predicate.
 <p></p>
 
 </dd>
-<dt><div class="d_decl">template <a name="countBy"></a><u>countBy</u>(alias pred,seq...)<br>template <a name="countBy"></a><u>countBy</u>(string pred,seq...)</div></dt>
+<dt><div class="d_decl">template <a name="countIf"></a><u>countIf</u>(alias pred,seq...)<br>template <a name="countIf"></a><u>countIf</u>(string pred,seq...)</div></dt>
 <dd>Same as <span class="d_inlinecode">meta.count</span>, but returns the number of elements that satisfy
 the predicate <span class="d_inlinecode">pred</span>.
 <p></p>
