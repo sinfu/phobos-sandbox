@@ -3791,26 +3791,28 @@ static assert(is(Res == meta.Seq!(int, short, uint)));
  */
 template uniqBy(alias eq, seq...)
 {
-    alias reduceR!(_uniqCons!(binaryT!eq), seq) uniqBy;
-}
-
-template uniqBy(alias eq)
-{
-    alias Seq!() uniqBy;
+    static if (seq.length < 2)
+    {
+        alias seq uniqBy;
+    }
+    else
+    {
+        alias reduceR!(_uniqCons!(binaryT!eq), seq) uniqBy;
+    }
 }
 
 
 private template _uniqCons(alias eq)
 {
-    template _uniqCons(seq...)
+    template _uniqCons(carCdr...)
     {
-        static if (seq.length > 1 && eq!(seq[0], seq[1]))
+        static if (carCdr.length > 1 && eq!(carCdr[0], carCdr[1]))
         {
-            alias Seq!(seq[0], seq[2 .. $]) _uniqCons;
+            alias Seq!(carCdr[0], carCdr[2 .. $]) _uniqCons;
         }
         else
         {
-            alias seq _uniqCons;
+            alias carCdr _uniqCons;
         }
     }
 }
