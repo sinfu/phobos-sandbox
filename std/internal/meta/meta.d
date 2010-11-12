@@ -3726,7 +3726,7 @@ Removes any consecutive group of duplicate elements in $(D seq) except the
 first one of each group.  Duplicates are detected with $(D meta.isSame).
 
 Params:
- seq = Zero or more compile-time entities.
+ seq = Target sequence.
 
 Returns:
  $(D seq) without any consecutive duplicate elements.
@@ -3748,6 +3748,9 @@ unittest
     alias uniq!() empty;
     static assert(empty.length == 0);
 
+    alias uniq!(int) Single;
+    static assert(is(Single == Seq!(int)));
+
     alias uniq!(int, double, string) Nodup;
     static assert(is(Nodup == Seq!(int, double, string)));
 
@@ -3767,39 +3770,69 @@ unittest
 
 
 /**
-Generalization of the $(D meta.uniq).
+Generalization of $(D meta.uniq) detecting duplicates with $(D eq), instead
+of $(D meta.isSame).
+
+Params:
+  eq = Binary predicate template that determines if passed-in arguments are
+       the same (or duplicated).
+ seq = Target sequence.
+
+Returns:
+ Sequence $(D seq) in which any consecutive group of duplicate elements are
+ squeezed into the fist one of each group.
+
+Example:
+----------
+alias meta.uniqBy!(q{ A.sizeof == B.sizeof },
+                   int, uint, short, ushort, uint) Res;
+static assert(is(Res == meta.Seq!(int, short, uint)));
+----------
  */
 template uniqBy(alias eq, seq...)
 {
-    static if (seq.length < 2)
+    alias reduceR!(_uniqCons!(binaryT!eq), seq) uniqBy;
+}
+
+template uniqBy(alias eq)
+{
+    alias Seq!() uniqBy;
+}
+
+
+private template _uniqCons(alias eq)
+{
+    template _uniqCons(seq...)
     {
-        alias seq uniqBy;
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        static if (eq!(seq[$/2 - 1], seq[$/2]))
+        static if (seq.length > 1 && eq!(seq[0], seq[1]))
         {
-            alias Seq!(uniqBy!(eq, seq[0 .. $/2]),
-                       uniqBy!(eq, seq[$/2 .. $])[1 .. $]) uniqBy;
+            alias Seq!(seq[0], seq[2 .. $]) _uniqCons;
         }
         else
         {
-            alias Seq!(uniqBy!(eq, seq[0 .. $/2]),
-                       uniqBy!(eq, seq[$/2 .. $])) uniqBy;
+            alias seq _uniqCons;
         }
     }
-}
-
-/// ditto
-template uniqBy(string eq, seq...)
-{
-    alias uniqBy!(binaryT!eq, seq) uniqBy;
 }
 
 
 unittest
 {
+    alias uniqBy!(q{ a == b }) empty;
+    static assert(empty.length == 0);
+
+    alias uniqBy!(q{ a == b }, 1,2,3,4,5) nodup;
+    static assert([ nodup ] == [ 1,2,3,4,5 ]);
+
+    alias uniqBy!(q{ a < b }, 1,2,3,0,8,7,6,5) noinc;
+    static assert([ noinc ] == [ 1,0,7,6,5 ]);
+}
+
+unittest
+{
+    alias meta.uniqBy!(q{ A.sizeof == B.sizeof },
+                       int, uint, short, ushort, uint) Res;
+    static assert(is(Res == meta.Seq!(int, short, uint)));
 }
 
 
@@ -4049,6 +4082,27 @@ unittest    // doc example
                                 0+4+8+2,
                                 0+4+8+2+1,
                                 0+4+8+2+1+4 ]);
+}
+
+
+
+/* undocumented for now */
+template reduceR(alias fun, seq...)
+{
+    alias _reduceR!(variadicT!fun, seq) reduceR;
+}
+
+private
+{
+    template _reduceR(alias fun, seq...)
+    {
+        alias fun!(seq[0], _reduceR!(fun, seq[1 .. $])) _reduceR;
+    }
+
+    template _reduceR(alias fun)
+    {
+        alias Seq!() _reduceR;
+    }
 }
 
 
