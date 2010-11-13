@@ -4542,19 +4542,22 @@ unittest
 
 
 /**
-Same as evaluating $(D untilIf!(pred, seq).length) except that $(D -1) is
-returned if no element satisfies the predicate.
+Finds the index of the first element of a sequence satisfying a predicate.
 
 Params:
- pred = .
-  seq = .
+ pred = Unary predicate template.
+  seq = Target sequence.
 
 Returns:
- .
+ Index of the first element, if any, satisfying the predicate $(D pred).
+ $(D -1) is returned if not found.  The type of the result is $(D sizediff_t).
 
 Example:
 ----------
-.
+alias meta.Seq!(int, double, short, string) Types;
+
+static assert(meta.indexIf!(q{ A.sizeof < 4 }, Types) ==  2);
+static assert(meta.indexIf!(q{ A.sizeof < 2 }, Types) == -1);
 ----------
  */
 template indexIf(alias pred, seq...)
@@ -4572,6 +4575,24 @@ template indexIf(alias pred, seq...)
 
 unittest
 {
+    static assert(indexIf!(q{  true }) == -1);
+    static assert(indexIf!(q{ false }, string, double, bool) == -1);
+
+    static assert(indexIf!(q{ a % 2 == 0 }, 2, 6, 8) == 0);
+    static assert(indexIf!(q{ a % 3 == 0 }, 2, 6, 8) == 1);
+    static assert(indexIf!(q{ a % 4 == 0 }, 2, 6, 8) == 2);
+
+    // Type check
+    static assert(is(typeof(indexIf!(q{  true }, int, double)) == sizediff_t));
+    static assert(is(typeof(indexIf!(q{ false }, int, double)) == sizediff_t));
+}
+
+unittest
+{
+    alias meta.Seq!(int, double, short, string) Types;
+
+    static assert(meta.indexIf!(q{ A.sizeof < 4 }, Types) ==  2);
+    static assert(meta.indexIf!(q{ A.sizeof < 2 }, Types) == -1);
 }
 
 
