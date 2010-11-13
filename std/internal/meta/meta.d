@@ -40,8 +40,8 @@ module std.internal.meta.meta;
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 
-// Introduce the meta namespace for unaryT etc.
-import meta = std.internal.meta.meta;
+// Introduce the symbols visible to user for unaryT etc.
+import std.meta;
 
 
 //----------------------------------------------------------------------------//
@@ -152,6 +152,59 @@ unittest
     alias meta.Seq!(10, 20, 30) numbers;
     int[] arr = [ 0, numbers, 100 ];
     assert(arr == [ 0, 10, 20, 30, 100 ]);
+}
+
+
+
+/**
+Synonym of $(D meta.Seq).
+
+This template is specially made available in the global namespace.  That is,
+$(D TypeSeq) can be used without the $(D meta) prefix.
+
+Params:
+ Types = Zero or more types making up the sequence.
+
+Returns:
+ Sequence of the given types.
+
+Examples:
+ Comparing type sequences with the $(D is) expression.
+----------
+alias TypeSeq!(int, double, string) A;
+static assert( is(A == TypeSeq!(int, double, string)));
+static assert(!is(A == TypeSeq!(string, int, double)));
+static assert(!is(A == TypeSeq!()));
+----------
+
+ Declaring a sequence of variables.
+----------
+TypeSeq!(int, double, string) vars;
+vars[0] = 10;
+vars[1] = 5.0;
+vars[2] = "Abcdef";
+----------
+ */
+template TypeSeq(Types...)
+{
+    alias Types TypeSeq;
+}
+
+
+unittest
+{
+    alias TypeSeq!(int, double, string) A;
+    static assert( is(A == TypeSeq!(int, double, string)));
+    static assert(!is(A == TypeSeq!(string, int, double)));
+    static assert(!is(A == TypeSeq!()));
+}
+
+unittest
+{
+    TypeSeq!(int, double, string) vars;
+    vars[0] = 10;
+    vars[1] = 5.0;
+    vars[2] = "Abcdef";
 }
 
 
