@@ -4757,29 +4757,8 @@ auto dropFront(Ranges...)(ref Ranges ranges)
  */
 template all(alias pred, seq...)
 {
-    static if (seq.length == 1)
-    {
-        enum all = pred!(seq[0]);
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        static if (all!(pred, seq[0 .. $/2]))
-        {
-            enum all = all!(pred, seq[$/2 .. $]);
-        }
-        else
-        {
-            enum all = false;
-        }
-    }
+    enum all = (_findChunk!(not!pred, 1).index!seq == seq.length);
 }
-
-template all(alias  pred) { enum all = true; }
-template all(string pred) { enum all = true; }
-
-// Hook for expression strings.
-template all(string pred, seq...) { enum all = all!(unaryT!pred, seq); }
 
 
 unittest
@@ -4812,7 +4791,7 @@ unittest
 /** ditto */
 template any(alias pred, seq...)
 {
-    enum any = !all!(not!pred, seq);
+    enum any = (_findChunk!(unaryT!pred, 1).index!seq < seq.length);
 }
 
 
@@ -4846,7 +4825,7 @@ unittest
 /** ditto */
 template none(alias pred, seq...)
 {
-    enum none = all!(not!pred, seq);
+    enum none = (_findChunk!(unaryT!pred, 1).index!seq == seq.length);
 }
 
 
@@ -4908,7 +4887,7 @@ static assert(!isValidBase!(B, I, C));
  */
 template only(alias pred, seq...)
 {
-    enum only = countIf!(pred, seq) == 1;
+    enum only = (countIf!(pred, seq) == 1);
 }
 
 
