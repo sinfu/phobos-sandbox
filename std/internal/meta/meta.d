@@ -4236,7 +4236,9 @@ unittest    // doc example
 
 
 /*
-Groundwork for find-family algorithms.
+Groundwork for find-family algorithms.  index!() finds the index of the
+first m-subsequence satisfying the predicate.  The predicate is evaluated
+lazily so that unnecessary instantiations should not kick in.
 
 Params:
  pred = m-ary predicate template.
@@ -4263,7 +4265,7 @@ template _findChunk(alias pred, size_t m)
     }
 
     // Halve seq to reduce the recursion depth.  This specialization
-    // is just for that purpose and index() can work without this.
+    // is just for that purpose and index!() could work without this.
     template index(seq...) if (2*m <= seq.length)
     {
         static if (index!(seq[0 .. $/2 + m - 1]) < seq.length/2)
