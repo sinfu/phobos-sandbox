@@ -5034,6 +5034,23 @@ unittest
 
 
 
+/* used by unittests */
+template isSameSet(alias A, alias B)
+{
+    enum isSameSet = is(pack!(setify!(A.expand)).Tag ==
+                        pack!(setify!(B.expand)).Tag);
+}
+
+template isSameSet(alias A)
+{
+    template isSameSet(alias B)
+    {
+        alias .isSameSet!(A, B) isSameSet;
+    }
+}
+
+
+
 /**
 Takes the _intersection of zero or more sequences.
 
@@ -5075,10 +5092,9 @@ template intersection(alias A, alias B)
 }
 
 
-/+
 unittest
 {
-    // values
+    // Test for values
     alias Seq!(1,2,2,4,5,7,9) a;
     alias Seq!(0,1,2,4,4,7,8) b;
     alias Seq!(0,1,4,4,5,7,8) c;
@@ -5086,11 +5102,11 @@ unittest
     alias intersection!(pack!a, pack!a) aa;
     alias intersection!(pack!a, pack!b) ab;
     alias intersection!(pack!b, pack!c) bc;
-    static assert( tag!aa == _set!(a) );
-    static assert( tag!ab == _set!(1,2,4,7) );
-    static assert( tag!bc == _set!(0,1,4,4,7,8) );
+    static assert(isSameSet!( pack!aa, pack!(a) ));
+    static assert(isSameSet!( pack!ab, pack!(1,2,4,7) ));
+    static assert(isSameSet!( pack!bc, pack!(0,1,4,4,7,8) ));
 
-    // types
+    // Test for types
     alias Seq!(int, int, double, string) T;
     alias Seq!(double, string, double, int) U;
     alias Seq!(double, void, int, double) V;
@@ -5098,17 +5114,26 @@ unittest
     alias intersection!(pack!T, pack!T) TT;
     alias intersection!(pack!T, pack!U) TU;
     alias intersection!(pack!U, pack!V) UV;
-    static assert( tag!TT == _set!(T) );
-    static assert( tag!TU == _set!(double, int, string) );
-    static assert( tag!UV == _set!(double, double, int) );
+    static assert(isSameSet!( pack!TT, pack!(T) ));
+    static assert(isSameSet!( pack!TU, pack!(double, int, string) ));
+    static assert(isSameSet!( pack!UV, pack!(double, double, int) ));
 
-    // degeneracy
+    // Degeneration
     alias Seq!() e;
-    static assert(! intersection!(pack!e, pack!e).length);
-    static assert(! intersection!(pack!e, pack!T).length);
-    static assert(! intersection!(pack!T, pack!a).length);
+    static assert(intersection!(pack!e, pack!e).length == 0);
+    static assert(intersection!(pack!e, pack!T).length == 0);
+    static assert(intersection!(pack!T, pack!a).length == 0);
 }
-+/
+
+unittest
+{
+    static assert(intersection!().length == 0);
+
+    alias intersection!(pack!()) Empty;
+    alias intersection!(pack!(int, double, string)) Single;
+    static assert(is(Empty == TypeSeq!()));
+    static assert(is(Single == TypeSeq!(int, double, string)));
+}
 
 unittest
 {
