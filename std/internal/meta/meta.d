@@ -531,7 +531,7 @@ alias meta.Seq!(int, "x",
                 string, "z") Mixed;
 
 alias meta.filter!(meta.isType, Mixed) Types;
-static assert(is(Types == meta.Seq!(int, double, string)));
+static assert(is(Types == TypeSeq!(int, double, string)));
 ----------
  */
 template isType(E)
@@ -570,7 +570,7 @@ unittest    // doc example
                     string, "z") Mixed;
 
     alias meta.filter!(meta.isType, Mixed) Types;
-    static assert(is(Types == meta.Seq!(int, double, string)));
+    static assert(is(Types == TypeSeq!(int, double, string)));
 }
 
 
@@ -1320,7 +1320,7 @@ template compareSize(T, U)
 // Get the types satisfying "int.sizeof < U.sizeof".
 alias meta.filter!(meta.bind!(compareSize, int),
                    byte, double, short, int, long) Result;
-static assert(is(Result == meta.Seq!(double, long) ));
+static assert(is(Result == TypeSeq!(double, long) ));
 ----------
  */
 template bind(alias templat, args...)
@@ -1355,7 +1355,7 @@ unittest    // doc example
 
     alias meta.filter!(meta.bind!(compareSize, int),
                        byte, double, short, int, long) Result;
-    static assert(is(Result == meta.Seq!(double, long) ));
+    static assert(is(Result == TypeSeq!(double, long) ));
 }
 
 
@@ -1383,7 +1383,7 @@ template compareSize(T, U)
 // Get the types satisfying "T.sizeof < int.sizeof"
 alias meta.filter!(meta.rbind!(compareSize, int),
                    byte, double, short, int, long) Result;
-static assert(is(Result == meta.Seq!(byte, short) ));
+static assert(is(Result == TypeSeq!(byte, short) ));
 ----------
  */
 template rbind(alias templat, args...)
@@ -1418,7 +1418,7 @@ unittest    // doc example
 
     alias meta.filter!(meta.rbind!(compareSize, int),
                        byte, double, short, int, long) Result;
-    static assert(is(Result == meta.Seq!(byte, short) ));
+    static assert(is(Result == TypeSeq!(byte, short) ));
 }
 
 
@@ -1760,7 +1760,7 @@ Example:
 // Note that bool doesn't have the .min property.
 alias meta.filter!(meta.or!(q{ A.sizeof < 4 }, q{ A.min < 0 }),
                    bool, ushort, int, uint) R;
-static assert(is(R == meta.Seq!(bool, ushort, int)));
+static assert(is(R == TypeSeq!(bool, ushort, int)));
 ----------
  */
 template or(preds...)
@@ -1817,7 +1817,7 @@ unittest    // doc example
 {
     alias meta.filter!(meta.or!(q{ A.sizeof < 4 }, q{ A.min < 0 }),
                        bool, ushort, int, uint) R;
-    static assert(is(R == meta.Seq!(bool, ushort, int)));
+    static assert(is(R == TypeSeq!(bool, ushort, int)));
 }
 
 
@@ -2503,7 +2503,7 @@ Returns:
 Example:
 ----------
 alias meta.recur!(4, q{ A* }, int) Pointers;
-static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
+static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
 ----------
  */
 template recur(size_t n, alias fun, Seed...)
@@ -2527,13 +2527,13 @@ unittest
     static assert([ recur!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
 
     alias recur!(3, q{ Seq!(args, void) }, int) VI;
-    static assert(is(VI == meta.Seq!(int, int, void, int, void, void)));
+    static assert(is(VI == TypeSeq!(int, int, void, int, void, void)));
 }
 
 unittest    // doc example
 {
     alias meta.recur!(4, q{ A* }, int) Pointers;
-    static assert(is(Pointers == meta.Seq!(int, int*, int**, int***)));
+    static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
 }
 
 
@@ -2657,11 +2657,11 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(byte, short, int, long) Types;
+alias TypeSeq!(byte, short, int, long) Types;
 
 // Swap short and int.
 alias meta.swapAt!(1, 2, Types) Swapped;
-static assert(is(Swapped == meta.Seq!(byte, int, short, long)));
+static assert(is(Swapped == TypeSeq!(byte, int, short, long)));
 ----------
  */
 template swapAt(size_t i, size_t j, seq...)
@@ -2706,7 +2706,7 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(double, "value", 5.0) seq;
+alias TypeSeq!(double, "value", 5.0) seq;
 alias meta.extract!([ 0, 2 ], seq) extracted;
 
 static assert(extracted.length == 2);
@@ -2761,7 +2761,7 @@ Returns:
 Example:
 ----------
 alias meta.reverse!(int, double, string) Rev;
-static assert(is(Rev == meta.Seq!(string, double, int)));
+static assert(is(Rev == TypeSeq!(string, double, int)));
 ----------
  */
 template reverse(seq...)
@@ -3388,7 +3388,7 @@ Returns:
 Example:
 ----------
 alias meta.filter!(q{ A.sizeof < 4 }, byte, short, int, long) SmallTypes;
-static assert(is(SmallTypes == meta.Seq!(byte, short)));
+static assert(is(SmallTypes == TypeSeq!(byte, short)));
 ----------
  */
 template filter(alias pred, seq...)
@@ -3417,7 +3417,7 @@ unittest
 unittest
 {
     alias meta.filter!(q{ A.sizeof < 4 }, byte, short, int, long) SmallTypes;
-    static assert(is(SmallTypes == meta.Seq!(byte, short)));
+    static assert(is(SmallTypes == TypeSeq!(byte, short)));
 }
 
 
@@ -3436,7 +3436,7 @@ Returns:
 Example:
 ----------
 alias meta.remove!(void, int, void, double, void, string) Res;
-static assert(is(Res == meta.Seq!(int, double, string)));
+static assert(is(Res == TypeSeq!(int, double, string)));
 ----------
  */
 template remove(E, seq...)
@@ -3470,7 +3470,7 @@ unittest
 unittest
 {
     alias meta.remove!(void, int, void, double, void, string) Res;
-    static assert(is(Res == meta.Seq!(int, double, string)));
+    static assert(is(Res == TypeSeq!(int, double, string)));
 }
 
 
@@ -3507,7 +3507,7 @@ Tip:
 ----------
 alias meta.map!(meta.conditional!(q{ is(A == const) }, meta.constant!void),
                 int, const double, string, const bool) Res;
-static assert(is(Res == meta.Seq!(int, void, string, void)));
+static assert(is(Res == TypeSeq!(int, void, string, void)));
 ----------
  */
 template replace(From, To, seq...)
@@ -3577,7 +3577,7 @@ unittest    // doc tip
 {
     alias meta.map!(meta.conditional!(q{ is(A == const) }, meta.constant!void),
                     int, const double, string, const bool) Res;
-    static assert(is(Res == meta.Seq!(int, void, string, void)));
+    static assert(is(Res == TypeSeq!(int, void, string, void)));
 }
 
 
@@ -3598,13 +3598,13 @@ Returns:
 Example:
 ----------
 // Sort types in terms of the sizes.
-alias meta.Seq!(double, int, bool, uint, short) Types;
+alias TypeSeq!(double, int, bool, uint, short) Types;
 
 alias meta.sort!(q{ A.sizeof < B.sizeof }, Types) Inc;
 alias meta.sort!(q{ A.sizeof > B.sizeof }, Types) Dec;
 
-static assert(is( Inc == meta.Seq!(bool, short, int, uint, double) ));
-static assert(is( Dec == meta.Seq!(double, int, uint, short, bool) ));
+static assert(is( Inc == TypeSeq!(bool, short, int, uint, double) ));
+static assert(is( Dec == TypeSeq!(double, int, uint, short, bool) ));
 ----------
  */
 template sort(alias comp, seq...)
@@ -3686,13 +3686,13 @@ unittest
 
 unittest    // doc example
 {
-    alias meta.Seq!(double, int, bool, uint, short) Types;
+    alias TypeSeq!(double, int, bool, uint, short) Types;
 
     alias meta.sort!(q{ A.sizeof < B.sizeof }, Types) Inc;
     alias meta.sort!(q{ A.sizeof > B.sizeof }, Types) Dec;
 
-    static assert(is( Inc == meta.Seq!(bool, short, int, uint, double) ));
-    static assert(is( Dec == meta.Seq!(double, int, uint, short, bool) ));
+    static assert(is( Inc == TypeSeq!(bool, short, int, uint, double) ));
+    static assert(is( Dec == TypeSeq!(double, int, uint, short, bool) ));
 }
 
 
@@ -3839,7 +3839,7 @@ Example:
 ----------
 alias meta.uniqBy!(q{ A.sizeof == B.sizeof },
                    int, uint, short, ushort, uint) Res;
-static assert(is(Res == meta.Seq!(int, short, uint)));
+static assert(is(Res == TypeSeq!(int, short, uint)));
 ----------
  */
 template uniqBy(alias eq, seq...)
@@ -3888,7 +3888,7 @@ unittest
 {
     alias meta.uniqBy!(q{ A.sizeof == B.sizeof },
                        int, uint, short, ushort, uint) Res;
-    static assert(is(Res == meta.Seq!(int, short, uint)));
+    static assert(is(Res == TypeSeq!(int, short, uint)));
 }
 
 
@@ -3906,7 +3906,7 @@ Returns:
 Example:
 ----------
 alias meta.removeDuplicates!(int, bool, bool, int, string) Res;
-static assert(is(Res == meta.Seq!(int, bool, string)));
+static assert(is(Res == TypeSeq!(int, bool, string)));
 ----------
  */
 template removeDuplicates(seq...)
@@ -3933,7 +3933,7 @@ unittest
 unittest
 {
     alias meta.removeDuplicates!(int, bool, bool, int, string) Res;
-    static assert(is(Res == meta.Seq!(int, bool, string)));
+    static assert(is(Res == TypeSeq!(int, bool, string)));
 }
 
 
@@ -3955,7 +3955,7 @@ Example:
 ----------
 alias meta.removeDuplicatesBy!(q{ A.sizeof == B.sizeof },
                                int, uint, short, ushort, uint) Res;
-static assert(is(Res == meta.Seq!(int, short)));
+static assert(is(Res == TypeSeq!(int, short)));
 ----------
  */
 template removeDuplicatesBy(alias eq, seq...)
@@ -3990,7 +3990,7 @@ unittest
 {
     alias meta.removeDuplicatesBy!(q{ A.sizeof == B.sizeof },
                                    int, uint, short, ushort, uint) Res;
-    static assert(is(Res == meta.Seq!(int, short)));
+    static assert(is(Res == TypeSeq!(int, short)));
 }
 
 
@@ -4018,7 +4018,7 @@ Returns:
 Example:
  Computing the net accumulation of the size of types.
 ----------
-alias meta.Seq!(int, double, short, bool, dchar) Types;
+alias TypeSeq!(int, double, short, bool, dchar) Types;
 
 // Note: 'a' gets the "current sum" and 'B' gets a type in the sequence.
 enum size = meta.reduce!(q{ a + B.sizeof }, 0, Types);
@@ -4083,7 +4083,7 @@ unittest
 
 unittest    // doc example
 {
-    alias meta.Seq!(int, double, short, bool, dchar) Types;
+    alias TypeSeq!(int, double, short, bool, dchar) Types;
 
     enum size = meta.reduce!(q{ a + B.sizeof }, 0, Types);
     static assert(size == 4 + 8 + 2 + 1 + 4);
@@ -4113,7 +4113,7 @@ Returns:
 Example:
  Computing the sum of the size of types with history.
 ----------
-alias meta.Seq!(int, double, short, bool, dchar) Types;
+alias TypeSeq!(int, double, short, bool, dchar) Types;
 
 alias meta.scan!(q{ a + B.sizeof }, 0, Types) sums;
 static assert([ sums ] == [ 0,
@@ -4181,7 +4181,7 @@ unittest
 
 unittest    // doc example
 {
-    alias meta.Seq!(int, double, short, bool, dchar) Types;
+    alias TypeSeq!(int, double, short, bool, dchar) Types;
 
     alias meta.scan!(q{ a + B.sizeof }, 0, Types) sums;
     static assert([ sums ] == [ 0,
@@ -4229,7 +4229,7 @@ Example:
  To get the largest element in the sequence, specify a greater-than operator
  as the $(D comp) argument.
 ----------
-alias meta.Seq!(int, bool, double, short) Types;
+alias TypeSeq!(int, bool, double, short) Types;
 
 // Take the largest type in the sequence: double.
 alias meta.most!(q{ A.sizeof > B.sizeof }, Types) Largest;
@@ -4280,7 +4280,7 @@ unittest
 
 unittest    // doc example
 {
-    alias meta.Seq!(int, bool, double, short) Types;
+    alias TypeSeq!(int, bool, double, short) Types;
 
     alias meta.most!(q{ A.sizeof > B.sizeof }, Types) Largest;
     static assert(is(Largest == double));
@@ -4347,15 +4347,15 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(int, short, double, bool, string) Types;
+alias TypeSeq!(int, short, double, bool, string) Types;
 
 alias meta.find!(bool, Types) AfterBool;
-static assert(is(AfterBool == meta.Seq!(bool, string)));
+static assert(is(AfterBool == TypeSeq!(bool, string)));
 
 // Take the subsequence after the largest type.
 alias meta.find!(meta.most!(q{ A.sizeof > B.sizeof }, Types),
                  Types) Sub;
-static assert(is(Sub == meta.Seq!(double, bool, string)));
+static assert(is(Sub == TypeSeq!(double, bool, string)));
 ----------
  */
 template find(E, seq...)
@@ -4387,14 +4387,14 @@ unittest
 
 unittest
 {
-    alias meta.Seq!(int, short, double, bool, string) Types;
+    alias TypeSeq!(int, short, double, bool, string) Types;
 
     alias meta.find!(bool, Types) AfterBool;
-    static assert(is(AfterBool == meta.Seq!(bool, string)));
+    static assert(is(AfterBool == TypeSeq!(bool, string)));
 
     alias meta.find!(meta.most!(q{ A.sizeof > B.sizeof }, Types),
                      Types) Sub;
-    static assert(is(Sub == meta.Seq!(double, bool, string)));
+    static assert(is(Sub == TypeSeq!(double, bool, string)));
 }
 
 
@@ -4414,7 +4414,7 @@ Example:
 ----------
 alias meta.findIf!(q{ is(A == const) },
                    int, double, const string, bool) Res;
-static assert(is(Res == meta.Seq!(const string, bool)));
+static assert(is(Res == TypeSeq!(const string, bool)));
 ----------
  */
 template findIf(alias pred, seq...)
@@ -4435,7 +4435,7 @@ unittest
 {
     alias meta.findIf!(q{ is(A == const) },
                        int, double, const string, bool) Res;
-    static assert(is(Res == meta.Seq!(const string, bool)));
+    static assert(is(Res == TypeSeq!(const string, bool)));
 }
 
 
@@ -4454,7 +4454,7 @@ Returns:
 Example:
 ----------
 alias meta.until!(void, int, double, void, string) Res;
-static assert(is(Res == meta.Seq!(int, double)));
+static assert(is(Res == TypeSeq!(int, double)));
 ----------
  */
 template until(E, seq...)
@@ -4487,7 +4487,7 @@ unittest
 unittest
 {
     alias meta.until!(void, int, double, void, string) Res;
-    static assert(is(Res == meta.Seq!(int, double)));
+    static assert(is(Res == TypeSeq!(int, double)));
 }
 
 
@@ -4507,7 +4507,7 @@ Example:
 ----------
 alias meta.untilIf!(q{ is(A == const) },
                     int, double, const string, bool) Res;
-static assert(is(Res == meta.Seq!(int, double)));
+static assert(is(Res == TypeSeq!(int, double)));
 ----------
  */
 template untilIf(alias pred, seq...)
@@ -4529,7 +4529,7 @@ unittest
 {
     alias meta.untilIf!(q{ is(A == const) },
                         int, double, const string, bool) Res;
-    static assert(is(Res == meta.Seq!(int, double)));
+    static assert(is(Res == TypeSeq!(int, double)));
 }
 
 
@@ -4547,7 +4547,7 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(int, double, bool, string) Types;
+alias TypeSeq!(int, double, bool, string) Types;
 
 static assert(meta.index!(bool, Types) ==  2);
 static assert(meta.index!(void, Types) == -1);
@@ -4588,7 +4588,7 @@ unittest
 
 unittest
 {
-    alias meta.Seq!(int, double, bool, string) Types;
+    alias TypeSeq!(int, double, bool, string) Types;
 
     static assert(meta.index!(bool, Types) ==  2);
     static assert(meta.index!(void, Types) == -1);
@@ -4609,7 +4609,7 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(int, double, short, string) Types;
+alias TypeSeq!(int, double, short, string) Types;
 
 static assert(meta.indexIf!(q{ A.sizeof < 4 }, Types) ==  2);
 static assert(meta.indexIf!(q{ A.sizeof < 2 }, Types) == -1);
@@ -4644,7 +4644,7 @@ unittest
 
 unittest
 {
-    alias meta.Seq!(int, double, short, string) Types;
+    alias TypeSeq!(int, double, short, string) Types;
 
     static assert(meta.indexIf!(q{ A.sizeof < 4 }, Types) ==  2);
     static assert(meta.indexIf!(q{ A.sizeof < 2 }, Types) == -1);
@@ -4664,7 +4664,7 @@ Returns:
 
 Example:
 ----------
-alias meta.Seq!(int, double, string, void) Types;
+alias TypeSeq!(int, double, string, void) Types;
 static assert(meta.count!(void, Types) == 1);
 ----------
  */
@@ -4699,7 +4699,7 @@ unittest
 
 unittest
 {
-    alias meta.Seq!(int, double, string, void) Types;
+    alias TypeSeq!(int, double, string, void) Types;
     static assert(meta.count!(void, Types) == 1);
 }
 
