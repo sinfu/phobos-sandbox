@@ -3447,7 +3447,7 @@ alias Example!(int, double, This) Ex;
 static assert(is(Ex.Types[2] == Ex));
 ----------
 
-Tips:
+Tip:
  You may want to use $(D meta.map) with $(D meta.conditional) to perform more
  complex replacements.  The following example replaces every const types in a
  type sequence with a $(D void).
@@ -3520,7 +3520,7 @@ unittest    // doc example
     static assert(is(Ex.Types[2] == Ex));
 }
 
-unittest    // doc tips
+unittest    // doc tip
 {
     alias meta.map!(meta.conditional!(q{ is(A == const) }, meta.constant!void),
                     int, const double, string, const bool) Res;
