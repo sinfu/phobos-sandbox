@@ -4598,18 +4598,19 @@ unittest
 
 
 /**
-Returns the number of occurrences of $(D E) in $(D seq).
+Counts the number of occurrences of $(D E) in $(D seq).
 
 Params:
    E = Compile-time entity to look for.
  seq = Target sequence.
 
 Returns:
- .  The type of the result is $(D size_t).
+ The number of elements in $(D seq) satisfying $(D isSame!E).
 
 Example:
 ----------
-.
+alias meta.Seq!(int, double, string, void) Types;
+static assert(meta.count!(void, Types) == 1);
 ----------
  */
 template count(E, seq...)
@@ -4626,6 +4627,25 @@ template count(alias E, seq...)
 
 unittest
 {
+    static assert(count!(int) == 0);
+    static assert(count!( 16) == 0);
+
+    static assert(count!(int, double, string, bool) == 0);
+    static assert(count!( 16, double, string, bool) == 0);
+
+    static assert(count!(int, int, void, void) == 1);
+    static assert(count!(int, int,  int, void) == 2);
+    static assert(count!(int, int,  int,  int) == 3);
+
+    static assert(count!(16, 16,  8,  4) == 1);
+    static assert(count!(16, 16, 16,  4) == 2);
+    static assert(count!(16, 16, 16, 16) == 3);
+}
+
+unittest
+{
+    alias meta.Seq!(int, double, string, void) Types;
+    static assert(meta.count!(void, Types) == 1);
 }
 
 
