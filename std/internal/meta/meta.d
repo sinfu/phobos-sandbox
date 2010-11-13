@@ -4480,19 +4480,22 @@ unittest
 
 
 /**
-Same as evaluating $(D until!(E, seq).length) except that $(D -1) is
-returned if $(D E) is not found.
+Finds the index of the first occurrence of $(D E) in a sequence.
 
 Params:
-   E = .
- seq = .
+   E = Compile-time entity to look for.
+ seq = Target sequence.
 
 Returns:
- .  The type of the result is $(D sizediff_t).
+ Index of the first element, if any, that is same as $(D E).  $(D -1) is
+ returned if not found.  The type of the result is $(D sizediff_t).
 
 Example:
 ----------
-.
+alias meta.Seq!(int, double, bool, string) Types;
+
+static assert(meta.index!(bool, Types) ==  2);
+static assert(meta.index!(void, Types) == -1);
 ----------
  */
 template index(E, seq...)
@@ -4509,6 +4512,31 @@ template index(alias E, seq...)
 
 unittest
 {
+    static assert(index!(int) == -1);
+    static assert(index!( 16) == -1);
+
+    static assert(index!(int, string, double, bool) == -1);
+    static assert(index!( 16, string, double, bool) == -1);
+
+    static assert(index!(string, string, double, int) == 0);
+    static assert(index!(double, string, double, int) == 1);
+    static assert(index!(   int, string, double, int) == 2);
+
+    static assert(index!( 4, 4, 8, 16) == 0);
+    static assert(index!( 8, 4, 8, 16) == 1);
+    static assert(index!(16, 4, 8, 16) == 2);
+
+    // Type check
+    static assert(is(typeof(index!(int, int, double)) == sizediff_t));
+    static assert(is(typeof(index!( 16, int, double)) == sizediff_t));
+}
+
+unittest
+{
+    alias meta.Seq!(int, double, bool, string) Types;
+
+    static assert(meta.index!(bool, Types) ==  2);
+    static assert(meta.index!(void, Types) == -1);
 }
 
 
