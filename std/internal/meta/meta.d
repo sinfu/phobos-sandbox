@@ -4651,19 +4651,19 @@ unittest
 
 
 /**
-Same as $(D meta.count), but returns the number of elements that satisfy
-the predicate $(D pred).
+Counts the number of elements in $(D seq) satisfying the predicate $(D pred).
 
 Params:
- pred = Unary predicate tempalte or expression string.
+ pred = Unary predicate template.
   seq = Target sequence.
 
 Returns:
- .
+ The number of elements in $(D seq) satisfying the predicate $(D pred).
 
 Example:
 ----------
-.
+static assert(meta.countIf!(q{ a[0] == '_' },
+                            "__ctor", "__dtor", "foo", "bar") == 2);
 ----------
  */
 template countIf(alias pred, seq...)
@@ -4687,7 +4687,6 @@ template countIf(alias pred, seq...)
     }
 }
 
-/// ditto
 template countIf(string pred, seq...)
 {
     enum countIf = countIf!(unaryT!pred, seq);
@@ -4696,6 +4695,18 @@ template countIf(string pred, seq...)
 
 unittest
 {
+    static assert(countIf!(q{  true }) == 0);
+    static assert(countIf!(q{ false }, int, double, string) == 0);
+
+    static assert(countIf!(q{ a % 6 == 0 }, 1,2,3,4,5,6) == 1);
+    static assert(countIf!(q{ a % 3 == 0 }, 1,2,3,4,5,6) == 2);
+    static assert(countIf!(q{ a % 2 == 0 }, 1,2,3,4,5,6) == 3);
+}
+
+unittest
+{
+    static assert(meta.countIf!(q{ a[0] == '_' },
+                                "__ctor", "__dtor", "foo", "bar") == 2);
 }
 
 
