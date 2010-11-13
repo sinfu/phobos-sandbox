@@ -3797,24 +3797,25 @@ template uniqBy(alias eq, seq...)
     }
     else
     {
-        alias reduceR!(_uniqCons!(binaryT!eq), seq) uniqBy;
+        alias reduceR!(_uniqCons!(binaryT!eq).uniqCons, seq) uniqBy;
     }
 }
 
 
 private template _uniqCons(alias eq)
 {
-    template _uniqCons(carCdr...)
+    template uniqCons(car, cdr...)
     {
-        static if (carCdr.length > 1 && eq!(carCdr[0], carCdr[1]))
-        {
-            alias Seq!(carCdr[0], carCdr[2 .. $]) _uniqCons;
-        }
-        else
-        {
-            alias carCdr _uniqCons;
-        }
+        alias Seq!(car, cdr[(eq!(car, cdr[0]) ? 1 : 0) .. $]) uniqCons;
     }
+
+    template uniqCons(alias car, cdr...)
+    {
+        alias Seq!(car, cdr[(eq!(car, cdr[0]) ? 1 : 0) .. $]) uniqCons;
+    }
+
+    template uniqCons(      car) { alias Seq!car uniqCons; }
+    template uniqCons(alias car) { alias Seq!car uniqCons; }
 }
 
 
