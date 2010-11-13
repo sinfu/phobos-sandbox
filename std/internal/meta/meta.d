@@ -4992,22 +4992,90 @@ unittest    // doc example
 //----------------------------------------------------------------------------//
 
 
-version (unittest) template _set(seq...)
+/**
+Normalizes the order of elements of a given sequence.  The normalization
+would be useful for comparing sequences with respect only to their contents
+independent of the order.
+
+Params:
+ seq = Any sequence to canonicalize the order.
+
+Returns:
+ Sequence $(D seq) rearranged in a uniform order.  Duplicate elements will
+ be grouped into a continuous repetition of that entity.
+
+Example:
+----------
+alias meta.setify!(int, bool, double, int) A;
+alias meta.setify!(bool, bool, double, int) B;
+
+static assert(is(A == TypeSeq!(bool, double, int, int)));
+static assert(is(B == TypeSeq!(bool, bool, double, int)));
+
+static assert(is(meta.uniq!A == meta.uniq!B));
+----------
+ */
+template setify(seq...)
 {
-    alias tag!(sort!(metaComp, seq)) _set;
+    alias sort!(metaComp, seq) setify;
+}
+
+
+unittest
+{
+    alias meta.setify!(int, bool, double, int) A;
+    alias meta.setify!(bool, bool, double, int) B;
+
+    static assert(is(A == TypeSeq!(bool, double, int, int)));
+    static assert(is(B == TypeSeq!(bool, bool, double, int)));
+
+    static assert(is(meta.uniq!A == meta.uniq!B));
 }
 
 
 
 /**
- * Set intersection.
+Takes the _intersection of zero or more sequences.
+
+Params:
+ seqs = Sequence of sequences to take _intersection of.  Each sequence must
+        be packed into $(D meta.pack) or a compatible entity.
+
+Returns:
+ Sequence composed only of common elements of all the given sequences.  The
+ empty sequence is returned if no sequence is passed, i.e. $(D seqs) is empty.
+
+ If the sequences contain $(D m1,...,mn) duplicates of the same element
+ respectively, the resulting _intersection will contain $(D min(m1,...,mn)),
+ or the least, duplicates of that element.
+
+Example:
+----------
+alias meta.intersection!(meta.pack!(int, int, double, bool, bool),
+                         meta.pack!(int, double, bool, double, bool),
+                         meta.pack!(bool, string, int, int, bool)) Inter;
+static assert(is(Inter == TypeSeq!(bool, bool, int)));
+----------
  */
-template setIntersection(alias A, alias B)
+template intersection(seqs...)
 {
-    alias setIntersectionBy!(metaComp, A, B) setIntersection;
+    static if (seqs.length == 0)
+    {
+        alias Seq!() intersection;
+    }
+    else
+    {
+        alias reduce!(compose!(pack, .intersection), seqs).expand intersection;
+    }
+}
+
+template intersection(alias A, alias B)
+{
+    alias intersectionBy!(metaComp, A, B) intersection;
 }
 
 
+/+
 unittest
 {
     // values
@@ -5015,9 +5083,9 @@ unittest
     alias Seq!(0,1,2,4,4,7,8) b;
     alias Seq!(0,1,4,4,5,7,8) c;
 
-    alias setIntersection!(pack!a, pack!a) aa;
-    alias setIntersection!(pack!a, pack!b) ab;
-    alias setIntersection!(pack!b, pack!c) bc;
+    alias intersection!(pack!a, pack!a) aa;
+    alias intersection!(pack!a, pack!b) ab;
+    alias intersection!(pack!b, pack!c) bc;
     static assert( tag!aa == _set!(a) );
     static assert( tag!ab == _set!(1,2,4,7) );
     static assert( tag!bc == _set!(0,1,4,4,7,8) );
@@ -5027,65 +5095,66 @@ unittest
     alias Seq!(double, string, double, int) U;
     alias Seq!(double, void, int, double) V;
 
-    alias setIntersection!(pack!T, pack!T) TT;
-    alias setIntersection!(pack!T, pack!U) TU;
-    alias setIntersection!(pack!U, pack!V) UV;
+    alias intersection!(pack!T, pack!T) TT;
+    alias intersection!(pack!T, pack!U) TU;
+    alias intersection!(pack!U, pack!V) UV;
     static assert( tag!TT == _set!(T) );
     static assert( tag!TU == _set!(double, int, string) );
     static assert( tag!UV == _set!(double, double, int) );
 
     // degeneracy
     alias Seq!() e;
-    static assert(! setIntersection!(pack!e, pack!e).length);
-    static assert(! setIntersection!(pack!e, pack!T).length);
-    static assert(! setIntersection!(pack!T, pack!a).length);
+    static assert(! intersection!(pack!e, pack!e).length);
+    static assert(! intersection!(pack!e, pack!T).length);
+    static assert(! intersection!(pack!T, pack!a).length);
+}
++/
+
+unittest
+{
+    alias meta.intersection!(meta.pack!(int, int, double, bool, bool),
+                             meta.pack!(int, double, bool, double, bool),
+                             meta.pack!(bool, string, int, bool)) Inter;
+    static assert(is(Inter == TypeSeq!(bool, bool, int)));
 }
 
 
-/* undocumented */
-template setIntersectionBy(alias comp, alias A, alias B)
+/* internal use */
+template intersectionBy(alias comp, alias A, alias B)
 {
-    alias _SetIntersection!comp.merge!(sort!(comp, A.expand))
-                               ._with!(sort!(comp, B.expand))
-          setIntersectionBy;
+    alias _intersectionBy!comp.Intersect!(sort!(comp, A.expand))
+                                   .With!(sort!(comp, B.expand)) intersectionBy;
 }
 
-
-private template _SetIntersection(alias comp)
+private template _intersectionBy(alias comp)
 {
-    template merge()
+    template Intersect(A...)
     {
-        template _with(B...)
-        {
-            alias Seq!() _with;
-        }
-    }
-
-    template merge(A...)
-    {
-        template _with()
-        {
-            alias Seq!() _with;
-        }
-
-        template _with(B...)
+        template With(B...)
         {
             static if (comp!(A[0], B[0]))
             {
-                alias Seq!(merge!(A[1 .. $])
-                          ._with!(B        )) _with;
+                alias Seq!(Intersect!(A[1 .. $])
+                               .With!(B        )) With;
             }
             else static if (comp!(B[0], A[0]))
             {
-                alias Seq!(merge!(A        )
-                          ._with!(B[1 .. $])) _with;
+                alias Seq!(Intersect!(A        )
+                               .With!(B[1 .. $])) With;
             }
             else
             {
-                alias Seq!(A[0], merge!(A[1 .. $])
-                                ._with!(B[1 .. $])) _with;
+                alias Seq!(A[0], Intersect!(A[1 .. $])
+                                     .With!(B[1 .. $])) With;
             }
         }
+
+        template With() { alias Seq!() With; }
+    }
+
+    template Intersect()
+    {
+        template With(B...) { alias Seq!() With; }
     }
 }
 
