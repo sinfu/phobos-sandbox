@@ -2890,8 +2890,8 @@ alias meta.Seq!(int, "index", 10,
 alias meta.stride!(3, seq        ) Types;
 alias meta.stride!(3, seq[1 .. $]) names;
 
-static assert(meta.tag!Types == meta.tag!(int, double));
-static assert(meta.tag!names == meta.tag!("index", "number"));
+static assert(meta.isSame!(meta.pack!Types, meta.pack!(int, double)));
+static assert(meta.isSame!(meta.pack!names, meta.pack!("index", "number")));
 ----------
  */
 template stride(size_t n, seq...) if (n >= 1)
@@ -2921,8 +2921,8 @@ unittest
     alias meta.stride!(3, seq        ) Types;
     alias meta.stride!(3, seq[1 .. $]) names;
 
-    static assert(meta.tag!Types == meta.tag!(int, double));
-    static assert(meta.tag!names == meta.tag!("index", "number"));
+    static assert(meta.isSame!(meta.pack!Types, meta.pack!(int, double)));
+    static assert(meta.isSame!(meta.pack!names, meta.pack!("index", "number")));
 }
 
 
