@@ -222,9 +222,7 @@ Example:
 alias meta.transverse!(0, meta.pack!(int, 32),
                           meta.pack!(double, 5.0),
                           meta.pack!(string, "hello.")) first;
-static assert(is(first[0] == int));
-static assert(is(first[1] == double));
-static assert(is(first[2] == string));
+static assert(is(first == TypeSeq!(int, double, string)));
 ----------
  */
 template pack(seq...)
@@ -276,9 +274,7 @@ unittest    // doc example
     alias meta.transverse!(0, meta.pack!(int, 32),
                               meta.pack!(double, 5.0),
                               meta.pack!(string, "hello.")) first;
-    static assert(is(first[0] == int));
-    static assert(is(first[1] == double));
-    static assert(is(first[2] == string));
+    static assert(is(first == TypeSeq!(int, double, string)));
 }
 
 
