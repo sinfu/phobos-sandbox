@@ -5034,6 +5034,71 @@ unittest
 
 
 
+/**
+Determines if all the specified items present in a sequence.
+
+Params:
+   set = The sequence, packed with $(D meta.pack), to test.
+ items = Zero or more compile-time entities to test the presence of.
+
+         The number of duplicates, if any, is significant.  If there are
+         $(D m) repetitions of an entity in $(D items), the template checks
+         if $(D sub) _contains $(D m) or more duplicates of that entity; and
+         returns $(D false) if not.
+
+Returns:
+ $(D true) if the sequence $(D set.expand) _contains all the _items in
+ $(D items) including duplicates, or $(D false) if not.  $(D true) is
+ returned if $(D items) is empty.
+
+Example:
+----------
+alias TypeSeq!(string, int, int, double) A;
+static assert( meta.contains!(meta.pack!A, string));
+static assert( meta.contains!(meta.pack!A, double, int, int));
+static assert(!meta.contains!(meta.pack!A, double, double));
+static assert(!meta.contains!(meta.pack!A, void));
+----------
+ */
+template contains(alias set, items...)
+{
+    enum contains = (intersection!(set, pack!items).length == items.length);
+}
+
+
+unittest
+{
+    static assert( contains!(pack!()));
+    static assert(!contains!(pack!(), int));
+    static assert(!contains!(pack!(), int, "index"));
+
+    alias pack!(1, 1, 1, 2, 2, 3) nums;
+    static assert(contains!(nums));
+    static assert(contains!(nums, nums.expand));
+
+    static assert(contains!(nums, 3));
+    static assert(contains!(nums, 1, 2, 3));
+    static assert(contains!(nums, 3, 1, 2));
+    static assert(contains!(nums, 1, 1, 2, 2));
+    static assert(contains!(nums, 3, 1, 1, 1));
+
+    static assert(!contains!(nums, 0));
+    static assert(!contains!(nums, 0, 1, 2, 3));
+    static assert(!contains!(nums, 1, 1, 1, 1));
+    static assert(!contains!(nums, 3, 3));
+}
+
+unittest
+{
+    alias TypeSeq!(string, int, int, double) A;
+    static assert( meta.contains!(meta.pack!A, string));
+    static assert( meta.contains!(meta.pack!A, double, int, int));
+    static assert(!meta.contains!(meta.pack!A, double, double));
+    static assert(!meta.contains!(meta.pack!A, void));
+}
+
+
+
 /* used by unittests */
 template isSameSet(alias A, alias B)
 {
