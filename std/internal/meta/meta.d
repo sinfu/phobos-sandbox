@@ -3125,7 +3125,7 @@ private
 {
     template unpackAt(size_t i)
     {
-        template unpackAt(alias pak) { alias pak.expand[i .. i+1] unpackAt; }
+        template unpackAt(alias pak) { alias Id!(pak.expand[i]) unpackAt; }
     }
 
     template isTransversable(size_t i, seqs...)
