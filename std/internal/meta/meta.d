@@ -2373,7 +2373,7 @@ private // iota for integral numbers
     {
         template upto(alias end)
         {
-            alias recur!(count!end, increment, beg) upto;
+            alias recurrence!(count!end, increment, beg) upto;
         }
 
      private:
@@ -2482,7 +2482,7 @@ unittest
 Generates a sequence by repeatedly applying $(D fun) on generated elements,
 and takes the first $(D n) results:
 ----------
-meta.recur!(n, fun, Seed) = (Seed, fun!Seed, fun!(fun!Seed), ...)
+meta.recurrence!(n, fun, Seed) = (Seed, fun!Seed, fun!(fun!Seed), ...)
 ----------
 
 Params:
@@ -2497,37 +2497,37 @@ Returns:
 
 Example:
 ----------
-alias meta.recur!(4, q{ A* }, int) Pointers;
+alias meta.recurrence!(4, q{ A* }, int) Pointers;
 static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
 ----------
  */
-template recur(size_t n, alias fun, Seed...)
+template recurrence(size_t n, alias fun, Seed...)
 {
     static if (n < 2)
     {
-        alias Seed[0 .. n * $] recur;
+        alias Seed[0 .. n * $] recurrence;
     }
     else
     {
-        alias Seq!(Seed, recur!(n - 1, fun, apply!(fun, Seed))) recur;
+        alias Seq!(Seed, recurrence!(n - 1, fun, apply!(fun, Seed))) recurrence;
     }
 }
 
 
 unittest
 {
-    static assert([ recur!(0, q{ a*5 }, 1) ] == [ ]);
-    static assert([ recur!(1, q{ a*5 }, 1) ] == [ 1 ]);
-    static assert([ recur!(2, q{ a*5 }, 1) ] == [ 1,5 ]);
-    static assert([ recur!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
+    static assert([ recurrence!(0, q{ a*5 }, 1) ] == [ ]);
+    static assert([ recurrence!(1, q{ a*5 }, 1) ] == [ 1 ]);
+    static assert([ recurrence!(2, q{ a*5 }, 1) ] == [ 1,5 ]);
+    static assert([ recurrence!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
 
-    alias recur!(3, q{ Seq!(args, void) }, int) VI;
+    alias recurrence!(3, q{ Seq!(args, void) }, int) VI;
     static assert(is(VI == TypeSeq!(int, int, void, int, void, void)));
 }
 
 unittest    // doc example
 {
-    alias meta.recur!(4, q{ A* }, int) Pointers;
+    alias meta.recurrence!(4, q{ A* }, int) Pointers;
     static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
 }
 
