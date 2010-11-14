@@ -3368,6 +3368,27 @@ unittest
 
 
 
+/* Recursive map, used by uniqBy */
+template mapRec(alias fun, seq...)
+{
+    alias _mapRec!(variadicT!fun).mapRec!seq mapRec;
+}
+
+private template _mapRec(alias fun)
+{
+    template mapRec(seq...)
+    {
+        alias fun!(seq[0], mapRec!(seq[1 .. $])) mapRec;
+    }
+
+    template mapRec()
+    {
+        alias Seq!() mapRec;
+    }
+}
+
+
+
 /**
 Creates a sequence only containing elements of $(D seq) satisfying $(D pred).
 
@@ -3839,14 +3860,7 @@ static assert(is(Res == TypeSeq!(int, short, uint)));
  */
 template uniqBy(alias eq, seq...)
 {
-    static if (seq.length < 2)
-    {
-        alias seq uniqBy;
-    }
-    else
-    {
-        alias reduceR!(_uniqCons!(binaryT!eq).uniqCons, seq) uniqBy;
-    }
+    alias mapRec!(_uniqCons!(binaryT!eq).uniqCons, seq) uniqBy;
 }
 
 
@@ -3854,16 +3868,27 @@ private template _uniqCons(alias eq)
 {
     template uniqCons(car, cdr...)
     {
-        alias Seq!(car, cdr[(eq!(car, cdr[0]) ? 1 : 0) .. $]) uniqCons;
+        static if (cdr.length && eq!(car, cdr[0]))
+        {
+            alias Seq!(car, cdr[1 .. $]) uniqCons;
+        }
+        else
+        {
+            alias Seq!(car, cdr) uniqCons;
+        }
     }
 
     template uniqCons(alias car, cdr...)
     {
-        alias Seq!(car, cdr[(eq!(car, cdr[0]) ? 1 : 0) .. $]) uniqCons;
+        static if (cdr.length && eq!(car, cdr[0]))
+        {
+            alias Seq!(car, cdr[1 .. $]) uniqCons;
+        }
+        else
+        {
+            alias Seq!(car, cdr) uniqCons;
+        }
     }
-
-    template uniqCons(      car) { alias Seq!car uniqCons; }
-    template uniqCons(alias car) { alias Seq!car uniqCons; }
 }
 
 
@@ -4186,27 +4211,6 @@ unittest    // doc example
                                 0+4+8+2,
                                 0+4+8+2+1,
                                 0+4+8+2+1+4 ]);
-}
-
-
-
-/* undocumented for now */
-template reduceR(alias fun, seq...)
-{
-    alias _reduceR!(variadicT!fun, seq) reduceR;
-}
-
-private
-{
-    template _reduceR(alias fun, seq...)
-    {
-        alias fun!(seq[0], _reduceR!(fun, seq[1 .. $])) _reduceR;
-    }
-
-    template _reduceR(alias fun)
-    {
-        alias Seq!() _reduceR;
-    }
 }
 
 
