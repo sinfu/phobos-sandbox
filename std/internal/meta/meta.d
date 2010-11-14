@@ -335,6 +335,23 @@ void fun() {}
 static assert( meta.isSame!(fun, fun));
 static assert(!meta.isSame!(fun, std));     // function and package
 ----------
+
+Note:
+ Type (and function) templates instantiated with the same entities as their
+ instantiation arguments must coincide.
+----------
+struct Example(alias parameter) {}
+
+// 'a' is an immutable int and '10' is an int.
+static immutable a = 10;
+static assert(!meta.isSame!(a, 10));
+static assert(!is(Example!a == Example!10));
+
+// Both 's' and the string mangled to "VAyaa3_616263"
+enum s = "abc";
+static assert(meta.isSame!(s, "abc"));
+static assert(is(Example!s == Example!"abc"));
+----------
  */
 template isSame(A, B)
 {
@@ -441,6 +458,19 @@ unittest    // doc example
     void fun() {}
     static assert( meta.isSame!(fun, fun));
     static assert(!meta.isSame!(fun, std));
+}
+
+unittest    // doc example (note)
+{
+    struct Example(alias parameter) {}
+
+    static immutable a = 10;
+    static assert(!meta.isSame!(a, 10));
+    static assert(!is(Example!a == Example!10));
+
+    enum s = "abc";
+    static assert(meta.isSame!(s, "abc"));
+    static assert(is(Example!s == Example!"abc"));
 }
 
 
@@ -790,9 +820,6 @@ static assert(is(Types[0] == int));
 static assert(is(Types[1] == double));
 static assert(is(Types[2] == string));
 ----------
-
-See_Also:
- $(D meta.lambda)
  */
 template unaryT(string expr)
 {
@@ -879,9 +906,6 @@ enum n2 = accumSize!(n1, double);
 enum n3 = accumSize!(n2,  short);
 static assert(n3 == 4 + 8 + 2);
 ----------
-
-See_Also:
- $(D meta.lambda)
  */
 template binaryT(string expr)
 {
@@ -996,9 +1020,6 @@ alias meta.variadicT!q{ meta.Seq!(args[1 .. $], A) } rotate1;
 
 static assert([ rotate1!(1, 2, 3, 4) ] == [ 2, 3, 4, 1 ]);
 ----------
-
-See_Also:
- $(D meta.lambda)
  */
 template variadicT(string expr)
 {
@@ -2866,8 +2887,8 @@ unittest
     alias meta.rotate!(+1, int, double, string) rotL;
     alias meta.rotate!(-1, int, double, string) rotR;
 
-    static assert(is(rotL == TypeSeq!(double, string, int));
-    static assert(is(rotR == TypeSeq!(string, int, double));
+    static assert(is(rotL == TypeSeq!(double, string, int)));
+    static assert(is(rotR == TypeSeq!(string, int, double)));
 }
 
 
