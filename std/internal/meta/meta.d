@@ -3086,7 +3086,7 @@ Example:
 alias meta.transverse!(1, meta.pack!(int, 255),
                           meta.pack!(double, 7.5),
                           meta.pack!(string, "yo")) second;
-static assert(meta.tag!second == meta.tag!(255, 7.5, "yo"));
+static assert(meta.isSame!(meta.pack!second, meta.pack!(255, 7.5, "yo")));
 ----------
  */
 template transverse(size_t i, seqs...) if (isTransversable!(i, seqs))
@@ -3132,7 +3132,7 @@ unittest
     alias meta.transverse!(1, meta.pack!(int, 255),
                               meta.pack!(double, 7.5),
                               meta.pack!(string, "yo")) second;
-    static assert(meta.tag!second == meta.tag!(255, 7.5, "yo"));
+    static assert(meta.isSame!(meta.pack!second, meta.pack!(255, 7.5, "yo")));
 }
 
 
