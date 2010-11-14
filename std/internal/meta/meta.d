@@ -5168,12 +5168,15 @@ Returns:
  respectively, the resulting _intersection will contain $(D min(m1,m2,...)),
  or the least, duplicates of that entity.
 
+ The order of elements in the returned sequence is normalized to the order
+ defined by $(D meta.setify).
+
 Example:
 ----------
 alias meta.intersection!(meta.pack!(int, int, double, bool, bool),
                          meta.pack!(int, double, bool, double, bool),
                          meta.pack!(bool, string, int, int, bool)) Inter;
-static assert(is(Inter == TypeSeq!(bool, bool, int)));
+static assert(is(Inter == meta.setify!(int, bool, bool)));
 ----------
  */
 template intersection(seqs...)
@@ -5191,6 +5194,11 @@ template intersection(seqs...)
 template intersection(alias A, alias B)
 {
     alias intersectionBy!(metaComp, A, B) intersection;
+}
+
+template intersection(alias A)
+{
+    alias setify!(A.expand) intersection;
 }
 
 
@@ -5234,7 +5242,7 @@ unittest
     alias intersection!(pack!()) Empty;
     alias intersection!(pack!(int, double, string)) Single;
     static assert(is(Empty == TypeSeq!()));
-    static assert(is(Single == TypeSeq!(int, double, string)));
+    static assert(is(Single == setify!(int, double, string)));
 }
 
 unittest
