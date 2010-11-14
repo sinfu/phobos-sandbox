@@ -1,25 +1,20 @@
 // Written in the D programming language.
 
 /**
-Generic templates and utilities for manipurating compile-time entities
-themselves.  Compile-time entities include types, compile-time values,
-symbols, and sequences of those entities.
+Auxiliary and algorithm templates for template metaprogramming on compile-time
+entities.  Compile-time entities include types, compile-time values, symbols,
+and sequences of those entities.
 
-All members in this module are defined in the implicit $(D meta)
-namespace and cannot be used without the $(D meta) qualifier:
+All members in this module are defined in the implicit $(D meta) namespace
+and cannot be used without the $(D meta) qualifier:
 ----------
 import std.meta;
 
 // Error! reverse is not defined. Use meta.reverse instead.
-alias reverse!("x", 10, "y", 20) Rev;
+alias reverse!(double, "x", double, "y") Rev;
 
 // Okay, qualified with meta.
-alias meta.reverse!("x", 10, "y", 20) Rev;
-----------
-
-Examples:
-----------
-TODO
+alias meta.reverse!(double, "x", double, "y") Rev;
 ----------
 
 Macros:
@@ -741,7 +736,7 @@ unittest
 
 
 //----------------------------------------------------------------------------//
-// Meta Meta-Templates
+// Auxiliary Templates
 //----------------------------------------------------------------------------//
 
 
@@ -2745,7 +2740,7 @@ template frontof(seq...)
 
 
 //----------------------------------------------------------------------------//
-// Topological Algorithms
+// Topological Transformation
 //----------------------------------------------------------------------------//
 
 
@@ -3291,7 +3286,7 @@ unittest
 
 
 //----------------------------------------------------------------------------//
-// Transformation Algorithms
+// Elements Transformation
 //----------------------------------------------------------------------------//
 
 
@@ -3996,7 +3991,7 @@ unittest
 
 
 //----------------------------------------------------------------------------//
-// Iteration & Query Algorithms
+// Iteration & Query
 //----------------------------------------------------------------------------//
 
 
