@@ -3659,19 +3659,27 @@ static assert(is( Dec == TypeSeq!(double, int, uint, short, bool) ));
  */
 template sort(alias comp, seq...)
 {
-    static if (seq.length < 2)
-    {
-        alias seq sort;
-    }
-    else
-    {
-         alias _sort!(variadicT!comp).Merge!(sort!(comp, seq[ 0  .. $/2]))
-                                      .With!(sort!(comp, seq[$/2 ..  $ ])) sort;
-    }
+     alias _sort!(binaryT!comp).sort!seq sort;
 }
+
 
 private template _sort(alias comp)
 {
+    template sort(seq...)
+    {
+        static if (seq.length < 2)
+        {
+            alias seq sort;
+        }
+        else
+        {
+            alias Merge!(sort!(seq[ 0  .. $/2]))
+                  .With!(sort!(seq[$/2 ..  $ ])) sort;
+        }
+    }
+
+  private:
+
     template Merge()
     {
         template With(B...)
