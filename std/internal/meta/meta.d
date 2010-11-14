@@ -5048,6 +5048,7 @@ alias meta.setify!(bool, bool, double, int) B;
 static assert(is(A == TypeSeq!(bool, double, int, int)));
 static assert(is(B == TypeSeq!(bool, bool, double, int)));
 
+// Use meta.uniq to ignore the duplicates.
 static assert(is(meta.uniq!A == meta.uniq!B));
 ----------
  */
