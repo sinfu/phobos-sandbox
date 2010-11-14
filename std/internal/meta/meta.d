@@ -4234,12 +4234,6 @@ static assert(is(Largest == double));
  */
 template most(alias comp, seq...) if (seq.length > 0)
 {
-    alias reduce!(_more!comp, seq) most;
-}
-
-/// ditto
-template most(string comp, seq...) if (seq.length > 0)
-{
     alias reduce!(_more!(binaryT!comp), seq) most;
 }
 
