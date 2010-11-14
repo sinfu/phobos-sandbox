@@ -5127,9 +5127,9 @@ Returns:
  Sequence composed only of common elements of all the given sequences.  The
  empty sequence is returned if no sequence is passed, i.e. $(D seqs) is empty.
 
- If the sequences contain $(D m1,...,mn) duplicates of the same element
- respectively, the resulting _intersection will contain $(D min(m1,...,mn)),
- or the least, duplicates of that element.
+ If the sequences contain $(D m1,m2,...) duplicates of the same entity
+ respectively, the resulting _intersection will contain $(D min(m1,m2,...)),
+ or the least, duplicates of that entity.
 
 Example:
 ----------
