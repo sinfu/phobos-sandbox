@@ -172,12 +172,14 @@ static assert(!is(A == TypeSeq!(string, int, double)));
 static assert(!is(A == TypeSeq!()));
 ----------
 
- Declaring a sequence of variables.
+ Declaring a sequence of variables.  Note that it's different from a so-called
+ tuple and can't be nested.
 ----------
-TypeSeq!(int, double, string) vars;
+TypeSeq!(int, double, TypeSeq!(bool, string)) vars;
 vars[0] = 10;
 vars[1] = 5.0;
-vars[2] = "Abcdef";
+vars[2] = false;
+vars[3] = "Abcdef";
 ----------
  */
 template TypeSeq(Types...)
@@ -196,10 +198,11 @@ unittest
 
 unittest
 {
-    TypeSeq!(int, double, string) vars;
+    TypeSeq!(int, double, TypeSeq!(bool, string)) vars;
     vars[0] = 10;
     vars[1] = 5.0;
-    vars[2] = "Abcdef";
+    vars[2] = false;
+    vars[3] = "Abcdef";
 }
 
 
