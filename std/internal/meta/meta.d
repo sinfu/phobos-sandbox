@@ -2813,8 +2813,8 @@ Example:
 alias meta.rotate!(+1, int, double, string) rotL;
 alias meta.rotate!(-1, int, double, string) rotR;
 
-static assert(meta.tag!rotL == meta.tag!(double, string, int));
-static assert(meta.tag!rotR == meta.tag!(string, int, double));
+static assert(is(rotL == TypeSeq!(double, string, int));
+static assert(is(rotR == TypeSeq!(string, int, double));
 ----------
  */
 template rotate(sizediff_t n, seq...)
@@ -2861,6 +2861,14 @@ unittest
     static assert(is(triple2rev == Seq!(double, string, int)));
 }
 
+unittest
+{
+    alias meta.rotate!(+1, int, double, string) rotL;
+    alias meta.rotate!(-1, int, double, string) rotR;
+
+    static assert(is(rotL == TypeSeq!(double, string, int));
+    static assert(is(rotR == TypeSeq!(string, int, double));
+}
 
 
 /**
