@@ -4025,33 +4025,33 @@ See_Also:
  */
 template reduce(alias fun, Seed, seq...)
 {
-    alias _reduce!(binaryT!fun, Seed, seq) reduce;
+    alias _reduce!(binaryT!fun).reduce!(Seed, seq) reduce;
 }
 
 /// ditto
 template reduce(alias fun, alias Seed, seq...)
 {
-    alias _reduce!(binaryT!fun, Seed, seq) reduce;
+    alias _reduce!(binaryT!fun).reduce!(Seed, seq) reduce;
 }
 
-private
+
+private template _reduce(alias fun)
 {
-    template _reduce(alias fun,       Seed) { alias Seed _reduce; }
-    template _reduce(alias fun, alias Seed) { alias Seed _reduce; }
-    template _reduce(alias fun,       Seed, seq...) { mixin(_reduceBody); }
-    template _reduce(alias fun, alias Seed, seq...) { mixin(_reduceBody); }
+    template reduce(      Seed) { alias Seed reduce; }
+    template reduce(alias Seed) { alias Seed reduce; }
+    template reduce(      Seed, seq...) { mixin(_reduceBody); }
+    template reduce(alias Seed, seq...) { mixin(_reduceBody); }
 
     enum _reduceBody =
     q{
         static if (seq.length == 1)
         {
-            alias fun!(Seed, seq[0]) _reduce;
+            alias fun!(Seed, seq[0]) reduce;
         }
         else
         {
             // Halving seq reduces the recursion depth.
-            alias _reduce!(fun, _reduce!(fun, Seed, seq[ 0  .. $/2]),
-                                                    seq[$/2 ..  $ ]) _reduce;
+            alias reduce!(reduce!(Seed, seq[0 .. $/2]), seq[$/2 .. $]) reduce;
         }
     };
 }
@@ -4123,29 +4123,30 @@ static assert([ sums ] == [ 0,
  */
 template scan(alias fun, Seed, seq...)
 {
-    alias _scan!(binaryT!fun, Seed, seq) scan;
+    alias _scan!(binaryT!fun).scan!(Seed, seq) scan;
 }
 
 /// ditto
 template scan(alias fun, alias Seed, seq...)
 {
-    alias _scan!(binaryT!fun, Seed, seq) scan;
+    alias _scan!(binaryT!fun).scan!(Seed, seq) scan;
 }
 
-private
+
+private template _scan(alias fun)
 {
-    template _scan(alias fun,       Seed, seq...) { mixin(_scanBody); }
-    template _scan(alias fun, alias Seed, seq...) { mixin(_scanBody); }
+    template scan(      Seed, seq...) { mixin(_scanBody); }
+    template scan(alias Seed, seq...) { mixin(_scanBody); }
 
     enum _scanBody =
     q{
         static if (seq.length == 0)
         {
-            alias Seq!Seed _scan;
+            alias Seq!(Seed) scan;
         }
         else
         {
-            alias Seq!(Seed, _scan!(fun, fun!(Seed, seq[0]), seq[1 .. $])) _scan;
+            alias Seq!(Seed, scan!(fun!(Seed, seq[0]), seq[1 .. $])) scan;
         }
     };
 }
