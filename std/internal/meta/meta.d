@@ -2814,6 +2814,12 @@ unittest
     static assert([0, reverse!(1,2,3,4), 0] == [0, 4,3,2,1, 0]);
 }
 
+unittest
+{
+    alias meta.reverse!(int, double, string) Rev;
+    static assert(is(Rev == TypeSeq!(string, double, int)));
+}
+
 
 
 /**
