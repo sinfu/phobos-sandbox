@@ -1154,10 +1154,7 @@ alias meta.map!(meta.lambda!(
                         }
                     }),
                 int*, void**, short, double***) NoPointers;
-static assert(is(NoPointers[0] == int));
-static assert(is(NoPointers[1] == void));
-static assert(is(NoPointers[2] == short));
-static assert(is(NoPointers[3] == double));
+static assert(is(NoPointers == TypeSeq!(int, void, short, double)));
 ----------
  */
 template lambda(string decl, captures...)
