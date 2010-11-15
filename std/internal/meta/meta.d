@@ -5064,7 +5064,7 @@ Example:
 alias meta.setify!(int, bool, double, int) A;
 alias meta.setify!(bool, bool, double, int) B;
 
-static assert(is(A == TypeSeq!(bool, double, int, int)));
+static assert(is(A == TypeSeq!(bool, int, double, int)));
 static assert(is(B == TypeSeq!(bool, bool, double, int)));
 
 // Use meta.uniq to ignore the duplicates.
@@ -5111,7 +5111,7 @@ Example:
 ----------
 alias TypeSeq!(string, int, int, double) A;
 static assert( meta.contains!(meta.pack!A, string));
-static assert( meta.contains!(meta.pack!A, double, int, int));
+static assert( meta.contains!(meta.pack!A, int, double, int));
 static assert(!meta.contains!(meta.pack!A, double, double));
 static assert(!meta.contains!(meta.pack!A, void));
 ----------
@@ -5148,7 +5148,7 @@ unittest
 {
     alias TypeSeq!(string, int, int, double) A;
     static assert( meta.contains!(meta.pack!A, string));
-    static assert( meta.contains!(meta.pack!A, double, int, int));
+    static assert( meta.contains!(meta.pack!A, int, double, int));
     static assert(!meta.contains!(meta.pack!A, double, double));
     static assert(!meta.contains!(meta.pack!A, void));
 }
