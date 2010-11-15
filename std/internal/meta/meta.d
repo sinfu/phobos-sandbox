@@ -5,8 +5,8 @@ Auxiliary and algorithm templates for template metaprogramming on compile-time
 entities.  Compile-time entities include types, compile-time values, symbols,
 and sequences of those entities.
 
-All members in this module are defined in the implicit $(D meta) namespace
-and cannot be used without the $(D meta) qualifier:
+All members in this module are defined in the $(D meta) namespace and cannot
+be used without the $(D meta) qualifier:
 ----------
 import std.meta;
 
