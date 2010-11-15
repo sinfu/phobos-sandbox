@@ -5061,8 +5061,8 @@ Returns:
 
 Example:
 ----------
-alias meta.setify!(int, bool, double, int) A;
-alias meta.setify!(bool, bool, double, int) B;
+alias meta.setify!(int, double, bool, int) A;
+alias meta.setify!(int, bool, double, bool) B;
 
 static assert(is(A == TypeSeq!(bool, double, int, int)));
 static assert(is(B == TypeSeq!(bool, bool, double, int)));
@@ -5079,8 +5079,8 @@ template setify(seq...)
 
 unittest
 {
-    alias meta.setify!(int, bool, double, int) A;
-    alias meta.setify!(bool, bool, double, int) B;
+    alias meta.setify!(int, double, bool, int) A;
+    alias meta.setify!(int, bool, double, bool) B;
 
     static assert(is(A == TypeSeq!(bool, double, int, int)));
     static assert(is(B == TypeSeq!(bool, bool, double, int)));
