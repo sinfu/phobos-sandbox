@@ -5155,19 +5155,47 @@ unittest
 
 
 
-/* used by unittests */
-template isSameSet(alias A, alias B)
+/**
+Determines if a sequence is composed of specified _items.
+
+Params:
+   set = The sequence, packed with $(D meta.pack), to test.
+ items = Zero or more compile-time entities to test the presence of.
+
+         The number of duplicates, if any, is significant.  If there are
+         $(D m) repetitions of an entity in $(D items), the template checks
+         if $(D set) _contains exactly $(D m) duplicates of that entity; and
+         returns $(D false) if not.
+
+Returns:
+ $(D true) if the sequence $(D set.expand) is composed of exactly the same
+ _items in $(D items) including duplicates, or $(D false) if not.
+
+Example:
+----------
+alias TypeSeq!(string, int, int, double) A;
+
+static assert( meta.isComposedOf!(meta.pack!A, double, int, string, int));
+static assert( meta.isComposedOf!(meta.pack!A, int, double, int, string));
+static assert(!meta.isComposedOf!(meta.pack!A, int, double, string));
+static assert(!meta.isComposedOf!(meta.pack!A, void));
+----------
+ */
+template isComposedOf(alias set, items...)
 {
-    enum isSameSet = is(pack!(setify!(A.expand)).Tag ==
-                        pack!(setify!(B.expand)).Tag);
+    enum isComposedOf = is(pack!(setify!(set.expand)).Tag ==
+                           pack!(setify!items).Tag);
 }
 
-template isSameSet(alias A)
+
+unittest
 {
-    template isSameSet(alias B)
-    {
-        alias .isSameSet!(A, B) isSameSet;
-    }
+    alias TypeSeq!(string, int, int, double) A;
+
+    static assert( meta.isComposedOf!(meta.pack!A, double, int, string, int));
+    static assert( meta.isComposedOf!(meta.pack!A, int, double, int, string));
+    static assert(!meta.isComposedOf!(meta.pack!A, int, double, string));
+    static assert(!meta.isComposedOf!(meta.pack!A, void));
 }
 
 
@@ -5232,9 +5260,9 @@ unittest
     alias intersection!(pack!a, pack!a) aa;
     alias intersection!(pack!a, pack!b) ab;
     alias intersection!(pack!b, pack!c) bc;
-    static assert(isSameSet!( pack!aa, pack!(a) ));
-    static assert(isSameSet!( pack!ab, pack!(1,2,4,7) ));
-    static assert(isSameSet!( pack!bc, pack!(0,1,4,4,7,8) ));
+    static assert(isComposedOf!(pack!aa, a));
+    static assert(isComposedOf!(pack!ab, 1,2,4,7));
+    static assert(isComposedOf!(pack!bc, 0,1,4,4,7,8));
 
     // Test for types
     alias Seq!(int, int, double, string) T;
@@ -5244,9 +5272,9 @@ unittest
     alias intersection!(pack!T, pack!T) TT;
     alias intersection!(pack!T, pack!U) TU;
     alias intersection!(pack!U, pack!V) UV;
-    static assert(isSameSet!( pack!TT, pack!(T) ));
-    static assert(isSameSet!( pack!TU, pack!(double, int, string) ));
-    static assert(isSameSet!( pack!UV, pack!(double, double, int) ));
+    static assert(isComposedOf!(pack!TT, T));
+    static assert(isComposedOf!(pack!TU, double, int, string));
+    static assert(isComposedOf!(pack!UV, double, double, int));
 
     // Degeneration
     alias Seq!() e;
