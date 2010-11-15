@@ -5448,11 +5448,11 @@ Params:
  entity = Compile-time entity to get the mangled name of.
 
 Returns:
- Compile-time string describing the given entity in the name mangling rule
- specified by the language ABI.
+ Compile-time string encoding the given entity in the name mangling rule
+ specified in the language ABI.
 
  If $(D entity) is a sequence of several compile-time entities, the returned
- string is the concatenation of the mangled names of these entities.  The empty
+ string is the concatenation of the mangled names of those entities.  The empty
  string is returned if $(D entity) is the empty sequence.
 
 Example:
