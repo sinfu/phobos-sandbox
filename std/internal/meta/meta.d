@@ -1129,6 +1129,10 @@ Params:
             The body may use a symbol $(D lambda) that refers to the
             generated template itself.
 
+            Becuase $(D decl) is mixed into a usual template declaration scope
+            inside the std.meta module, $(D decl) can declare private functions
+            and even import arbitrary modules.
+
  captures = Local compile-time entities (types, values, templates etc.) to
             make available in the generated template.
 
