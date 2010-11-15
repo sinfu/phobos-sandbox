@@ -5048,9 +5048,9 @@ unittest    // doc example
 
 
 /**
-Normalizes the order of elements of a given sequence.  The normalization
-would be useful for comparing sequences with respect only to their contents
-independent of the order.
+Normalizes the order of elements in a given sequence.  The normalization
+would be useful for comparing sequences with respect only to their contents,
+independent of the order of elements.
 
 Params:
  seq = Any sequence to canonicalize the order.
