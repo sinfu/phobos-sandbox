@@ -2183,6 +2183,99 @@ unittest
 
 
 
+/**
+The $(D switch) statement-esque utility template.
+
+Params:
+ cases = Sequence of zero or more $(D (condition, then)) patterns optionally
+         followed by a $(D default) argument.  $(D condition) is a boolean
+         value; $(D then) and $(D default) are any compile-time entities,
+         respectively.
+
+Returns:
+ The $(D then) argument associated with the first $(D condition) that is
+ $(D true).  The $(D default) argument is returned if all the $(D condition)s
+ are $(D false).
+
+ Instantiation fails if no $(D condition) is $(D true) and the $(D default)
+ argument is not specified.  It also fails if there is a $(D condition) that
+ is not strictly typed as $(D bool).
+
+Example:
+----------
+enum n = 100000;
+
+alias meta.cond!(n <=  ubyte.max,  ubyte,
+                 n <= ushort.max, ushort,
+                 n <=   uint.max,   uint,   // matches
+                                   ulong) T;
+static assert(is(T == uint));
+----------
+ */
+template cond(cases...) if (cases.length > 0)
+{
+    static if (segmentWith!(_matchCase, 2, cases).length)
+    {
+        alias frontof!(segmentWith!(_matchCase, 2, cases)) cond;
+    }
+    else static assert(0, "No match");
+}
+
+
+private
+{
+    template _matchCase(bool cond, then...)
+    {
+        static if (cond)
+        {
+            alias then _matchCase;
+        }
+        else
+        {
+            alias Seq!() _matchCase;
+        }
+    }
+
+    template _matchCase(      fallback) { alias fallback _matchCase; }
+    template _matchCase(alias fallback) { alias fallback _matchCase; }
+
+    template _matchCase(spec...) if (spec.length > 1)
+    {
+        static assert(0, "Malformed cond-then: "~ spec.stringof);
+    }
+}
+
+
+unittest
+{
+    static assert(is(cond!(true, int) == int));
+    static assert(is(cond!(true, int, void) == int));
+    static assert(is(cond!(false, int, void) == void));
+
+    static assert(is(cond!(true, int, true, double) == int));
+    static assert(is(cond!(false, int, true, double, void) == double));
+    static assert(is(cond!(false, int, false, double, void) == void));
+
+    struct S;
+    static assert(!__traits(compiles, cond!(S, int)));
+    static assert(!__traits(compiles, cond!(-1, int)));
+    static assert(!__traits(compiles, cond!(true, int, 123, int)));
+    static assert(!__traits(compiles, cond!(false, int, false, int)));
+}
+
+unittest
+{
+    enum n = 100000;
+
+    alias meta.cond!(n <=  ubyte.max,  ubyte,
+                     n <= ushort.max, ushort,
+                     n <=   uint.max,   uint,
+                                       ulong) T;
+    static assert(is(T == uint));
+}
+
+
+
 //----------------------------------------------------------------------------//
 // Sequence Construction
 //----------------------------------------------------------------------------//
