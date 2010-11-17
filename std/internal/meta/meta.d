@@ -2667,56 +2667,31 @@ unittest
 
 
 
-/**
-Generalization of $(D meta.segment) passing each segment to $(D fun) instead
-of $(D meta.pack).
-
-Params:
- fun = $(D n)-ary template that transforms each segment.
-   n = The size of each _segment.  $(D n) must not be zero.
- seq = Sequence to process.
-
-Returns:
- Sequence of the results of $(D fun) applied to each segment.
-
-Example:
-----------
-alias meta.segmentWith!(q{ B[A] }, 2,
-                        string, int, string, double) result;
-static assert(is(result[0] ==    int[string]));
-static assert(is(result[1] == double[string]));
-----------
- */
-template segmentWith(alias fun, size_t n, seq...) if (n == 1)
+/* undocumented (for internal use) */
+template segmentWith(alias fun, size_t n, seq...) if (n > 0)
 {
-    alias map!(fun, seq) segmentWith;
-}
-
-/// ditto
-template segmentWith(alias fun, size_t n, seq...) if (n > 1)
-{
-    static if (seq.length == 0)
-    {
-        alias Seq!() segmentWith;
-    }
-    else static if (seq.length <= n)
-    {
-        alias Seq!(apply!(fun, seq)) segmentWith;
-    }
-    else
-    {
-        // Halving seq reduces the recursion depth.
-        alias Seq!(segmentWith!(fun, n, seq[0 .. _segmentMid!($, n)     ]),
-                   segmentWith!(fun, n, seq[     _segmentMid!($, n) .. $]))
-              segmentWith;
-    }
+    alias _segmentWith!(variadicT!fun, n).segment!seq segmentWith;
 }
 
 
-// Computes the proper bisecting point.
-private template _segmentMid(size_t n, size_t k)
+private template _segmnetWith(alias fun, size_t n)
 {
-    enum _segmentMid = ((n + k - 1) / k / 2) * k;
+    template segment()
+    {
+        alias Seq!() segment;
+    }
+
+    template segment(seq...)
+    {
+        static if (seq.length <= n)
+        {
+            alias Seq!(fun!seq) segment;
+        }
+        else
+        {
+            alias Seq!(fun!(seq[0 .. n]), segment!(seq[n .. $])) segment;
+        }
+    }
 }
 
 
