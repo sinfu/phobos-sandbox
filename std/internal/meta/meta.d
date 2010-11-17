@@ -2889,8 +2889,6 @@ unittest
     static assert(is(PP[0] ==    int*));
     static assert(is(PP[1] == double*));
     static assert(is(PP[2] ==  void**));
-
-    static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
 }
 
 
@@ -3059,19 +3057,7 @@ template replace(From, To, seq...)
 }
 
 /// ditto
-template replace(alias From, To, seq...) if (!isType!From)
-{
-    alias map!(conditional!(isSame!From, constant!To), seq) replace;
-}
-
-/// ditto
-template replace(From, alias To, seq...) if (!isType!To)
-{
-    alias map!(conditional!(isSame!From, constant!To), seq) replace;
-}
-
-/// ditto
-template replace(alias From, alias To, seq...) if (!isType!From && !isType!To)
+template replace(alias From, alias To, seq...)
 {
     alias map!(conditional!(isSame!From, constant!To), seq) replace;
 }
@@ -3094,8 +3080,9 @@ unittest
 
     // Test for ambiguity problem with user-defined types due to @@@BUG4431@@@
     struct S;
-    alias replace!(S, int, S, S, S) amb1;
-    alias replace!(int, S, S, S, S) amb2;
+    alias replace!(  S, int, S, S, S) amb1;
+    alias replace!(int,   S, S, S, S) amb2;
+    alias replace!(  S,   S, S, S, S) amb3;
 }
 
 unittest    // doc example
