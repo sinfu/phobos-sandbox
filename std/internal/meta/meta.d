@@ -2834,18 +2834,13 @@ Returns:
  Sequence of the results of $(D fun) applied to each element of $(D seq) in
  turn.
 
-Examples:
+Example:
  Map types into pointers.
 ----------
 alias meta.map!(q{ A* }, int, double, void*) PP;
 static assert(is(PP[0] ==    int*));
 static assert(is(PP[1] == double*));
 static assert(is(PP[2] ==  void**));
-----------
-
- Doubling elements:
-----------
-static assert([ meta.map!(q{ meta.Seq!(a, a) }, 1,2,3) ] == [ 1,1, 2,2, 3,3 ]);
 ----------
  */
 template map(alias fun, seq...)
