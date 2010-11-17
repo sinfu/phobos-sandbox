@@ -798,7 +798,8 @@ unittest
 /* undocumented for now */
 template metaComp(entities...) if (entities.length == 2)
 {
-    enum metaComp = tag!(entities[0]) < tag!(entities[1]);
+    enum metaComp = (pack!(entities[0]).Tag*).mangleof <
+                    (pack!(entities[1]).Tag*).mangleof;
 }
 
 
@@ -807,11 +808,6 @@ unittest
     static assert(metaComp!(10, 20));
     static assert(metaComp!(10, -5)); // Yes
     static assert(metaComp!(int, 5));
-
-    alias sort!(metaComp,    int, "x", 10, double, "y", 20) s1;
-    alias sort!(metaComp, double, "y", 20,    int, "x", 10) s2;
-    static assert(tag!s1 == tag!(double, int, 10, 20, "x", "y"));
-    static assert(tag!s2 == tag!(double, int, 10, 20, "x", "y"));
 }
 
 
@@ -1095,10 +1091,10 @@ unittest
     static assert(is(MakeConstAA!(int, string) == const(string)[int]));
 
     alias variadicT!q{ pack!(G, E, C, A, B, D, F, H) } Shuffle;
-    static assert(tag!(Shuffle!(int, double, string, bool,
-                                dchar, void*, short, byte))
-                  == tag!(pack!(short, dchar, string, int,
-                                double, bool, void*, byte)));
+    static assert(isSame!(Shuffle!(int, double, string, bool,
+                                   dchar, void*, short, byte),
+                             pack!(short, dchar, string, int,
+                                   double, bool, void*, byte)));
 
     // Mixing multicase parameters
     alias variadicT!q{ A[b][c] } Make2D;
@@ -1985,12 +1981,11 @@ template applier(args...)
 unittest
 {
     alias applier!() empty;
-    static assert( tag!(empty!Seq ) == tag!( Seq!()) );
-    static assert( tag!(empty!pack) == tag!(pack!()) );
+    static assert(isSame!( pack!(empty!Seq ), pack!( Seq!()) ));
+    static assert(isSame!( pack!(empty!pack), pack!(pack!()) ));
 
     alias applier!(int, 100) int100;
-    static assert( tag!(int100!pack) == tag!(pack!(int, 100)) );
-    static assert( tag!(int100!q{ const A }) == tag!(const int) );
+    static assert(isSame!( int100!q{ A[b] }, int[100] ));
 }
 
 
@@ -2052,9 +2047,9 @@ template expand(alias arr)
 
 unittest
 {
-    static assert( tag!(expand!([])) == tag!() );
-    static assert( tag!(expand!([1])) == tag!(1) );
-    static assert( tag!(expand!([1,2,3,4])) == tag!(1,2,3,4) );
+    static assert([ expand!([         ]) ] == [         ]);
+    static assert([ expand!([ 1       ]) ] == [ 1       ]);
+    static assert([ expand!([ 1,2,3,4 ]) ] == [ 1,2,3,4 ]);
 
     // type check
     static assert(is( typeof(expand!([1.0,2.0])[0]) == double ));
@@ -2305,9 +2300,9 @@ unittest
     alias replaceAt!(0, int, 1,2,3,4,5) T0;
     alias replaceAt!(2, int, 1,2,3,4,5) T2;
     alias replaceAt!(4, int, 1,2,3,4,5) T4;
-    static assert(tag!T0 == tag!(int,2,3,4,5));
-    static assert(tag!T2 == tag!(1,2,int,4,5));
-    static assert(tag!T4 == tag!(1,2,3,4,int));
+    static assert(isSame( pack!T0, pack!(int,2,3,4,5) ));
+    static assert(isSame( pack!T2, pack!(1,2,int,4,5) ));
+    static assert(isSame( pack!T4, pack!(1,2,3,4,int) ));
 }
 
 
@@ -2586,8 +2581,8 @@ unittest
     static assert(is(stride!(2) == Seq!()));
     static assert(is(stride!(5) == Seq!()));
 
-    alias stride!(1, int, double, string) asis;
-    static assert(tag!asis == tag!(int, double, string));
+    alias stride!(1, int, double, string) AsIs;
+    static assert(is(AsIs == TypeSeq!(int, double, string)));
 
     static assert([ stride!(2, 1,2,3,4,5) ] == [ 1,3,5 ]);
     static assert([ stride!(3, 1,2,3,4,5) ] == [ 1,4 ]);
@@ -2650,9 +2645,9 @@ unittest
     alias segment!(1, 1,2,3,4) seg1;
     alias segment!(2, 1,2,3,4) seg2;
     alias segment!(3, 1,2,3,4) seg3;
-    static assert(tag!seg1 == tag!(pack!(1), pack!(2), pack!(3), pack!(4)));
-    static assert(tag!seg2 == tag!(pack!(1,2), pack!(3,4)));
-    static assert(tag!seg3 == tag!(pack!(1,2,3), pack!4));
+    static assert(isSame!( pack!seg1, pack!(pack!(1), pack!(2), pack!(3), pack!(4)) ));
+    static assert(isSame!( pack!seg2, pack!(pack!(1,2), pack!(3,4)) ));
+    static assert(isSame!( pack!seg3, pack!(pack!(1,2,3), pack!4) ));
 }
 
 unittest
@@ -3198,20 +3193,14 @@ unittest
     static assert(empty.length == 0);
 
     alias replace!(void, int, Seq!(int, string, double)) NoMatch;
-    static assert(tag!NoMatch == tag!(int, string, double));
+    static assert(is(NoMatch == TypeSeq!(int, string, double)));
 
     // Test for the specializations
     alias replace!(void, int, Seq!(void, double, void, string)) TT;
-    static assert(tag!TT == tag!(int, double, int, string));
-
-    alias replace!(0, int, Seq!(0, 1, 0, -1)) vT;
-    static assert(tag!vT == tag!(int, 1, int, -1));
-
-    alias replace!(int, -1, Seq!(int, double, int, string)) Tv;
-    static assert(tag!Tv == tag!(-1, double, -1, string));
+    static assert(is(TT == TypeSeq!(int, double, int, string)));
 
     alias replace!(null, "", Seq!(null, "abc", null, "def")) vv;
-    static assert(tag!vv == tag!("", "abc", "", "def"));
+    static assert([ vv ] == [ "", "abc", "", "def" ]);
 
     // Test for ambiguity problem with user-defined types due to @@@BUG4431@@@
     struct S;
