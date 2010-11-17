@@ -1995,6 +1995,33 @@ unittest
 //----------------------------------------------------------------------------//
 
 
+/* undocumented (internal use) */
+template recurrence(size_t n, alias fun, Seed...)
+{
+    static if (n < 2)
+    {
+        alias Seed[0 .. n * $] recurrence;
+    }
+    else
+    {
+        alias Seq!(Seed, recurrence!(n - 1, fun, apply!(fun, Seed))) recurrence;
+    }
+}
+
+
+unittest
+{
+    static assert([ recurrence!(0, q{ a*5 }, 1) ] == [ ]);
+    static assert([ recurrence!(1, q{ a*5 }, 1) ] == [ 1 ]);
+    static assert([ recurrence!(2, q{ a*5 }, 1) ] == [ 1,5 ]);
+    static assert([ recurrence!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
+
+    alias recurrence!(3, q{ Seq!(args, void) }, int) VI;
+    static assert(is(VI == TypeSeq!(int, int, void, int, void, void)));
+}
+
+
+
 /**
 Yields a sequence of numbers starting from $(D beg) to $(D end) with the
 specified $(D step).
