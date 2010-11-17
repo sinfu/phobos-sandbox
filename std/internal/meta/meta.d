@@ -2173,67 +2173,6 @@ unittest
 
 
 
-private // iota for floating-point numbers
-{
-    template _isFloatingIota(alias beg, alias step)
-    {
-        enum _isFloatingIota = !_isIntegralIota!(beg, step) &&
-                               (is(typeof( beg) : real) ||
-                                is(typeof(step) : real));
-    }
-
-    template _iota(alias beg, alias step) if (_isFloatingIota!(beg, step))
-    {
-        template upto(alias end)
-        {
-            alias map!(transform, _iota!(0, 1).upto!(count!end)) upto;
-        }
-
-     private:
-
-        alias typeof(true ? beg : step) T;
-
-        template count(alias end)
-        {
-            // Dumb 'ceil' function.
-            static if ((step > 0 && transform!(basicCount!end) < end) ||
-                       (step < 0 && transform!(basicCount!end) > end))
-                enum count = basicCount!end + 1;
-            else
-                enum count = basicCount!end;
-        }
-
-        template basicCount(alias end)
-        {
-            enum basicCount = cast(size_t) ((end - beg) / step);
-        }
-
-        template transform(alias cur) { enum T transform = beg + cur*step; }
-    }
-}
-
-
-unittest
-{
-    static assert([ iota!(0.0) ] == []);
-    static assert([ iota!(0.5) ] == [ 0.0 ]);
-    static assert([ iota!(1.0) ] == [ 0.0 ]);
-    static assert([ iota!(3.5) ] == [ 0.0, 1.0, 2.0, 3.0 ]);
-    static assert([ iota!(-0.1) ] == []);
-    static assert([ iota!(-5.5) ] == []);
-
-    static assert([ iota!(-1.5,  4) ] == [ -1.5, -0.5, 0.5, 1.5, 2.5, 3.5 ]);
-    static assert([ iota!( 5.0,  3) ] == []);
-    static assert([ iota!(-0.9, -1) ] == []);
-
-    static assert([ iota!(1.0, 3.01, 1) ] == [ 1.0, 2.0, 3.0 ]);
-    static assert([ iota!(1.0, 1.5, 10) ] == [ 1.0 ]);
-    static assert([ iota!(2.0, 1.5, -10) ] == [ 2.0 ]);
-    static assert([ iota!(2.0, 10, -1) ] == []);
-}
-
-
-
 /**
 Generates a sequence by repeatedly applying $(D fun) on generated elements,
 and takes the first $(D n) results:
