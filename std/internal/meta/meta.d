@@ -2267,61 +2267,6 @@ unittest
 
 
 
-/* undocumented (for internal use) */
-template extractAt(size_t i, seq...)
-{
-    alias Id!(seq[i]) extractAt;
-}
-
-
-/**
-Extracts elements at the specified positions out of $(D seq).
-
-Params:
- indices = Compile-time array of _indices designating elements to _extract.
-           Each index must be less than $(D seq.length) and implicitly
-           convertible to $(D size_t).  Duplicate _indices are allowed.
-
-     seq = Source sequence.
-
-Returns:
- Sequence of elements extracted from $(D seq).  The order of the elements
- is the same as that of corresponding _indices in $(D indices).  The length
- of the result is the same as that of $(D indices), and the empty sequence
- is returned if $(D indices) is empty.
-
-Example:
-----------
-alias TypeSeq!(double, "value", 5.0) seq;
-alias meta.extract!([ 0, 2 ], seq) extracted;
-
-static assert(extracted.length == 2);
-static assert(is(extracted[0] == double));
-static assert(   extracted[1] == 5.0    );
-----------
- */
-template extract(alias indices, seq...)
-{
-    alias map!(rbind!(extractAt, seq), expand!indices) extract;
-}
-
-
-unittest
-{
-    alias Seq!(0,10,20,30,40) src;
-
-    static assert([ extract!([], src) ] == [ ]);
-    static assert([ extract!([2], src) ] == [ 20 ]);
-    static assert([ extract!([1,2,3], src) ] == [ 10,20,30 ]);
-    static assert([ extract!([0,1,2,3,4], src) ] == [ 0,10,20,30,40 ]);
-    static assert([ extract!([0,1,2,3,4], src) ] == [ 0,10,20,30,40 ]);
-
-    static assert([ extract!([1,1,1], src) ] == [ 10,10,10 ]);
-    static assert([ extract!([3,3,3,2,2,2], src) ] == [ 30,30,30,20,20,20 ]);
-}
-
-
-
 /* undocumented (used by stride) */
 template frontof(seq...)
 {
