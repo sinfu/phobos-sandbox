@@ -2174,61 +2174,6 @@ unittest
 
 
 /**
-Generates a sequence by repeatedly applying $(D fun) on generated elements,
-and takes the first $(D n) results:
-----------
-meta.recurrence!(n, fun, Seed) = (Seed, fun!Seed, fun!(fun!Seed), ...)
-----------
-
-Params:
-    n = Number of recurrences.  Specify zero to get the empty sequence.
-  fun = Recurrence template that computes the next state.  The state can be
-        any sequence which can be passed to $(D fun) itself.
- Seed = Initial state.
-
-Returns:
- Sequence composed of $(D Seed) followed by $(D fun!Seed), $(D fun!(fun!Seed)),
- ... etc., ending with the $(D n-1) repeated application of $(D fun).
-
-Example:
-----------
-alias meta.recurrence!(4, q{ A* }, int) Pointers;
-static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
-----------
- */
-template recurrence(size_t n, alias fun, Seed...)
-{
-    static if (n < 2)
-    {
-        alias Seed[0 .. n * $] recurrence;
-    }
-    else
-    {
-        alias Seq!(Seed, recurrence!(n - 1, fun, apply!(fun, Seed))) recurrence;
-    }
-}
-
-
-unittest
-{
-    static assert([ recurrence!(0, q{ a*5 }, 1) ] == [ ]);
-    static assert([ recurrence!(1, q{ a*5 }, 1) ] == [ 1 ]);
-    static assert([ recurrence!(2, q{ a*5 }, 1) ] == [ 1,5 ]);
-    static assert([ recurrence!(5, q{ a*5 }, 1) ] == [ 1,5,25,125,625 ]);
-
-    alias recurrence!(3, q{ Seq!(args, void) }, int) VI;
-    static assert(is(VI == TypeSeq!(int, int, void, int, void, void)));
-}
-
-unittest    // doc example
-{
-    alias meta.recurrence!(4, q{ A* }, int) Pointers;
-    static assert(is(Pointers == TypeSeq!(int, int*, int**, int***)));
-}
-
-
-
-/**
 Creates a sequence in which $(D seq) repeats $(D n) times.
 
 Params:
