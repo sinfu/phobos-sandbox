@@ -248,7 +248,7 @@ template pack(seq...)
     }
 
 
-    /* undocumented (used by meta.tag) */
+    /* undocumented (internal use) */
     struct Tag;
 }
 
@@ -279,26 +279,35 @@ unittest    // doc example
 
 
 
-/* undocumented for now */
-template tag(seq...)
+/**
+Makes the mangled name of a compile-time entity.
+
+Params:
+ entity = Compile-time entity to get the mangled name of.
+
+Returns:
+ Compile-time string encoding the given entity in the name mangling rule of
+ the language ABI.
+
+ If $(D entity) is a sequence of several compile-time entities, the returned
+ string is the concatenation of the mangled names of those entities.  The empty
+ string is returned if $(D entity) is the empty sequence.
+
+Example:
+----------
+import std.math : cos;
+
+static assert(meta.mangle!cos == "S25_D3std4math3cosFNaNbNfeZe");
+static assert(meta.mangle!(real, int) == "TeTi");
+----------
+ */
+template mangle(entity...)
 {
-    enum tag = (pack!seq.Tag*).mangleof;
+    enum mangle = _stripTag((pack!entity.Tag*).mangleof);
 }
 
 
-unittest
-{
-    alias meta.Seq!(int, "value") AA;
-    alias meta.Seq!(double, "number", 5.0) BB;
-
-    static assert(meta.tag!AA == meta.tag!AA);
-    static assert(meta.tag!AA != meta.tag!BB);
-    static assert(meta.tag!BB == meta.tag!BB);
-}
-
-
-// Used by meta.mangle.
-private @safe string _stripTag(string tag) pure nothrow
+private string _stripTag(string tag) pure nothrow
 {
     enum
     {
@@ -313,6 +322,30 @@ private @safe string _stripTag(string tag) pure nothrow
         ++i;
     }
     return tag[i + midfix.length .. $ - suffix.length];
+}
+
+
+unittest
+{
+    static assert(mangle!() == "");
+
+    static assert(mangle!int == "Ti");
+    static assert(mangle!512 == "Vi512");
+    static assert(mangle!"abc" == "VAyaa3_616263");
+    static assert(mangle!mangle == "S303std8internal4meta4meta6mangle");
+
+    static assert(mangle!(int, 512, mangle) == "TiVi512S303std8internal4meta4meta6mangle");
+}
+
+unittest
+{
+    struct Scope
+    {
+        import std.math : cos;
+
+        static assert(meta.mangle!cos == "S25_D3std4math3cosFNaNbNfeZe");
+        static assert(meta.mangle!(real, int) == "TeTi");
+    }
 }
 
 
@@ -4995,58 +5028,5 @@ unittest
                      n <=   uint.max,   uint,
                                        ulong) T;
     static assert(is(T == uint));
-}
-
-
-
-/**
-Makes the mangled name of a compile-time entity.
-
-Params:
- entity = Compile-time entity to get the mangled name of.
-
-Returns:
- Compile-time string encoding the given entity in the name mangling rule
- specified in the language ABI.
-
- If $(D entity) is a sequence of several compile-time entities, the returned
- string is the concatenation of the mangled names of those entities.  The empty
- string is returned if $(D entity) is the empty sequence.
-
-Example:
-----------
-import std.math : cos;
-
-static assert(meta.mangle!cos == "S25_D3std4math3cosFNaNbNfeZe");
-static assert(meta.mangle!(real, int) == "TeTi");
-----------
- */
-template mangle(entity...)
-{
-    enum mangle = _stripTag(tag!entity);
-}
-
-
-unittest
-{
-    static assert(mangle!() == "");
-
-    static assert(mangle!int == "Ti");
-    static assert(mangle!512 == "Vi512");
-    static assert(mangle!"abc" == "VAyaa3_616263");
-    static assert(mangle!mangle == "S303std8internal4meta4meta6mangle");
-
-    static assert(mangle!(int, 512, mangle) == "TiVi512S303std8internal4meta4meta6mangle");
-}
-
-unittest
-{
-    struct Scope
-    {
-        import std.math : cos;
-
-        static assert(meta.mangle!cos == "S25_D3std4math3cosFNaNbNfeZe");
-        static assert(meta.mangle!(real, int) == "TeTi");
-    }
 }
 
