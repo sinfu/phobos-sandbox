@@ -2464,7 +2464,7 @@ static assert(meta.isSame!(meta.pack!Types, meta.pack!(int, double)));
 static assert(meta.isSame!(meta.pack!names, meta.pack!("index", "number")));
 ----------
  */
-template stride(size_t n, seq...) if (n >= 1)
+template stride(size_t n, seq...) if (n > 0)
 {
     alias segmentWith!(frontof, n, seq) stride;
 }
@@ -2524,7 +2524,7 @@ static assert(meta.isSame!(patterns[0], meta.pack!(int, "index", 10)));
 static assert(meta.isSame!(patterns[1], meta.pack!(double, "number", 5.0)));
 ----------
  */
-template segment(size_t n, seq...) if (n >= 1)
+template segment(size_t n, seq...) if (n > 0)
 {
     alias segmentWith!(pack, n, seq) segment;
 }
@@ -2564,7 +2564,7 @@ template segmentWith(alias fun, size_t n, seq...) if (n > 0)
 }
 
 
-private template _segmnetWith(alias fun, size_t n)
+private template _segmentWith(alias fun, size_t n)
 {
     template segment()
     {
