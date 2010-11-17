@@ -2250,9 +2250,9 @@ unittest
     alias replaceAt!(0, int, 1,2,3,4,5) T0;
     alias replaceAt!(2, int, 1,2,3,4,5) T2;
     alias replaceAt!(4, int, 1,2,3,4,5) T4;
-    static assert(isSame( pack!T0, pack!(int,2,3,4,5) ));
-    static assert(isSame( pack!T2, pack!(1,2,int,4,5) ));
-    static assert(isSame( pack!T4, pack!(1,2,3,4,int) ));
+    static assert(isSame!( pack!T0, pack!(int,2,3,4,5) ));
+    static assert(isSame!( pack!T2, pack!(1,2,int,4,5) ));
+    static assert(isSame!( pack!T4, pack!(1,2,3,4,int) ));
 }
 
 
