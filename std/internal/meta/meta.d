@@ -991,32 +991,6 @@ unittest    // bug 4431
 
 
 
-// Generic mixins for variadicT and lambda.  These templates install
-// one-letter symbols aliasing template arguments or captures.
-private
-{
-    mixin template _parameters(size_t n, size_t i = 0)
-    {
-        static if (i < n && i < 8)
-        {
-            mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
-                                       ~ "ABCDEFGH"[i] ~";");
-            mixin _parameters!(n, i + 1);
-        }
-    }
-
-    mixin template _captures(size_t n, size_t i = 0)
-    {
-        static if (i < n && i < 8)
-        {
-            mixin("alias Id!(captures[i]) "~ "pqrstuvw"[i] ~","
-                                           ~ "PQRSTUVW"[i] ~";");
-            mixin _captures!(n, i + 1);
-        }
-    }
-}
-
-
 /**
 Transforms a string representing an expression into a variadic template.
 The expression can read variadic arguments via $(D args).
@@ -1057,9 +1031,18 @@ private template variadicTGen(string expr)
 
     private template _variadicT(args...)
     {
-        // @@@BUG4886@@@ workaround '+'
-        mixin _parameters!(+args.length);
-        mixin _installLambdaExpr!expr;      // installs '_'
+        mixin _parameters!(+args.length);   // @@@BUG4886@@@ workaround '+'
+        mixin _installLambdaExpr!expr;
+    }
+
+    mixin template _parameters(size_t n, size_t i = 0)
+    {
+        static if (i < n && i < 8)
+        {
+            mixin("alias Id!(args[i]) "~ "abcdefgh"[i] ~","
+                                       ~ "ABCDEFGH"[i] ~";");
+            mixin _parameters!(n, i + 1);
+        }
     }
 }
 
@@ -1105,181 +1088,6 @@ unittest    // doc example
     alias meta.variadicT!q{ meta.Seq!(args[1 .. $], A) } rotate1;
 
     static assert([ rotate1!(1, 2, 3, 4) ] == [ 2, 3, 4, 1 ]);
-}
-
-
-
-/**
-Transforms a string representing a template body into a variadic template.
-
-$(D meta.lambda) is much like $(D meta.variadicT) as it's variadic and
-parameters can be accessed via $(D args) and $(D a)-$(D h).  In addition,
-$(D meta.lambda) also supports recursions and local entity _captures.
-
-Params:
-     decl = String representing a valid template body.  The body must
-            declare a symbol $(D __) that represents the result of the
-            template.  The result can be overloaded if it's a function
-            or a template.
-
-            The body may use named parameters $(D a) to $(D h), $(D A) to
-            $(D H) and $(D args).  Also, named _captures $(D p) to $(D w),
-            $(D P) to $(D W) and $(D captures) are available.
-
-            The body may use a symbol $(D lambda) that refers to the
-            generated template itself.
-
-            Becuase $(D decl) is mixed into a usual template declaration scope
-            inside the std.meta module, $(D decl) can declare private functions
-            and even import arbitrary modules.
-
- captures = Local compile-time entities (types, values, templates etc.) to
-            make available in the generated template.
-
-Returns:
- Variadic template whose body is $(D decl) and evaluates to $(D __) declared
- in the body.
-
-Example:
-----------
-alias meta.map!(meta.lambda!(
-                   q{
-                        static if (is(A T == T*))
-                        {
-                            alias lambda!T _;   // recursion
-                        }
-                        else
-                        {
-                            alias        A _;
-                        }
-                    }),
-                int*, void**, short, double***) NoPointers;
-static assert(is(NoPointers == TypeSeq!(int, void, short, double)));
-----------
- */
-template lambda(string decl, captures...)
-{
-    alias lambdaGen!(decl, captures).lambda lambda;
-}
-
-private template lambdaGen(string decl, captures...)
-{
-    template lambda(args...) { alias _lambda!args._ lambda; }
-
- private:
-
-    template _lambda(args...)
-    {
-        // @@@BUG4886@@@ workaround '+'
-        mixin _parameters!(    +args.length);
-        mixin _captures  !(+captures.length);
-        mixin _body;
-    }
-
-    // Because decl uses named parameter symbols (which may or may not be
-    // available depending on the number of arguments), it has to be mixed
-    // in via this template to defer compiler's checks.
-    mixin template _body()
-    {
-        mixin(decl);
-    }
-}
-
-
-unittest
-{
-    alias lambda!(
-           q{
-                // alias
-                alias A[] _;
-            })
-            DynArray;
-    static assert(is(DynArray!int == int[]));
-
-    alias lambda!(
-           q{
-                // private members and enum
-                enum x = a*a + b*b;
-                enum y = a*b;
-                enum _ = [ x, y ];
-            })
-            hypot2Area;
-    static assert(hypot2Area!(3, 4) == [ 25, 12 ]);
-
-    alias lambda!(
-           q{
-                // overloads
-                template _(    T) { alias A[T] _; }
-                template _(int n) { alias A[n] _; }
-            })
-            Arrayizer;
-    alias Arrayizer!int IntArrayizer;
-    static assert(is(IntArrayizer!string == int[string]));
-    static assert(is(IntArrayizer!1024 == int[1024]));
-}
-
-unittest    // Test for captures
-{
-    alias lambda!(
-           q{
-                // lowercase captures
-                enum _ = [ p,q,r,s,t,u,v,w ] == [ 1,2,3,4,5,6,7,8 ];
-            },
-            1,2,3,4,5,6,7,8) testLowerCapts;
-    static assert(testLowerCapts!());
-
-    alias lambda!(
-           q{
-                // uppercase captures
-                enum _ = is(P ==  byte) && is(Q ==  short) &&
-                         is(R ==   int) && is(S ==   long) &&
-                         is(T == ubyte) && is(U == ushort) &&
-                         is(V ==  uint) && is(W ==  ulong);
-            },
-            byte, short, int, long,
-            ubyte, ushort, uint, ulong) testUpperCapts;
-    static assert(testUpperCapts!());
-
-    alias lambda!(
-           q{
-                // variadic captures
-                enum _ = [ captures ] == [ 1,2,3,4,5,6,7,8,9 ];
-            },
-            1,2,3,4,5,6,7,8,9) testVariadicCapts;
-    static assert(testVariadicCapts!());
-}
-
-unittest    // Test for recursion
-{
-    alias lambda!(
-           q{
-                static if (a <= 0)
-                    enum _ = 0;
-                else
-                    enum _ = a + lambda!(a - 1);
-            }) sum;
-    static assert(sum!9 == 45);
-    static assert(sum!0 ==  0);
-}
-
-unittest    // doc example (recursion)
-{
-    alias meta.map!(meta.lambda!(
-                       q{
-                            static if (is(A T : T*))
-                            {
-                                alias lambda!T _;
-                            }
-                            else
-                            {
-                                alias        A _;
-                            }
-                        }),
-                    int*, void**, short, double***) NoPointers;
-    static assert(is(NoPointers[0] == int));
-    static assert(is(NoPointers[1] == void));
-    static assert(is(NoPointers[2] == short));
-    static assert(is(NoPointers[3] == double));
 }
 
 
