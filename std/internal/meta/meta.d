@@ -2715,27 +2715,7 @@ unittest
 
 
 
-/**
-Given sequence of packed sequences, generates a sequence transversing
-the $(D i)-th element of each of the sequences.
-
-Params:
-    i = Valid index for each packed sequence in $(D seqs).
- seqs = Sequence of packed sequences.  Each packed sequence must have a
-        property $(D expand) that yields a sequence and its length must be
-        greater than $(D i).
-
-Returns:
- Sequence composed of the $(D i)-th element of each of the given sequences.
-
-Example:
-----------
-alias meta.transverse!(1, meta.pack!(int, 255),
-                          meta.pack!(double, 7.5),
-                          meta.pack!(string, "yo")) second;
-static assert(meta.isSame!(meta.pack!second, meta.pack!(255, 7.5, "yo")));
-----------
- */
+/* undocumented (for internal use) */
 template transverse(size_t i, seqs...) if (isTransversable!(i, seqs))
 {
     alias map!(unpackAt!i, seqs) transverse;
