@@ -351,20 +351,9 @@ unittest
 
 
 /**
-Determines if $(D A) and $(D B) are the same entities.
-
-$(D A) and $(D B) are compared in terms of their mangled names.  So, a
-literal value $(D 10) and a CTFE capable property function returning $(D 10)
-are considered different; literals are values and properties are symbols.
-----------
-struct S
-{
-    static @property int property() { return 10; }
-}
-static assert( meta.isSame!(10, 10));
-static assert(!meta.isSame!(S.property, 10));
-static assert( meta.isSame!(S.property, S.property));
-----------
+Determines if $(D A) and $(D B) are the same entities.  $(D A) and $(D B) are
+considered the same if templates instantiated, respectively, with $(D A) and
+$(D B) coincide with each other.
 
 Returns:
  $(D true) if and only if $(D A) and $(D B) are the same entity.
@@ -372,37 +361,17 @@ Returns:
 Example:
  Comparing various entities.
 ----------
-// Compare types.
 struct MyType {}
 static assert( meta.isSame!(int, int));
 static assert(!meta.isSame!(MyType, double));
 
-// Compare values.  Type is significant.
 enum str = "abc";
 static assert( meta.isSame!(str, "abc"));
 static assert(!meta.isSame!(10, 10u));      // int and uint
 
-// Compare symbols.
 void fun() {}
 static assert( meta.isSame!(fun, fun));
 static assert(!meta.isSame!(fun, std));     // function and package
-----------
-
-Note:
- Type (and function) templates instantiated with the same entities as their
- instantiation arguments must coincide.
-----------
-struct Example(alias parameter) {}
-
-// 'a' is an immutable int and '10' is an int.
-static immutable a = 10;
-static assert(!meta.isSame!(a, 10));
-static assert(!is(Example!a == Example!10));
-
-// Both 's' and the string mangled to "VAyaa3_616263"
-enum s = "abc";
-static assert(meta.isSame!(s, "abc"));
-static assert(is(Example!s == Example!"abc"));
 ----------
  */
 template isSame(A, B)
@@ -425,7 +394,7 @@ template isSame(alias A, B) if (!isType!A)
 /// ditto
 template isSame(alias A, alias B) if (!isType!A && !isType!B)
 {
-    enum isSame = is(pack!A.Tag == pack!B.Tag); // type <=> mangleof
+    enum isSame = is(pack!A.Tag == pack!B.Tag);
 }
 
 
@@ -486,7 +455,7 @@ unittest    // mismatch
     static assert(!isSame!(    40, isSame));
 }
 
-unittest    // doc example (property)
+unittest    // CTFE-able property is symbol
 {
     struct S
     {
@@ -510,19 +479,6 @@ unittest    // doc example
     void fun() {}
     static assert( meta.isSame!(fun, fun));
     static assert(!meta.isSame!(fun, std));
-}
-
-unittest    // doc example (note)
-{
-    struct Example(alias parameter) {}
-
-    static immutable a = 10;
-    static assert(!meta.isSame!(a, 10));
-    static assert(!is(Example!a == Example!10));
-
-    enum s = "abc";
-    static assert(meta.isSame!(s, "abc"));
-    static assert(is(Example!s == Example!"abc"));
 }
 
 
