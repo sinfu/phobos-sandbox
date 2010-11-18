@@ -1372,7 +1372,6 @@ template not(alias pred)
     }
 }
 
-/// ditto
 template not(string pred)
 {
     alias not!(variadicT!pred) not;
