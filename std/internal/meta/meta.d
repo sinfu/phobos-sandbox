@@ -2051,8 +2051,7 @@ private // iota for integral numbers
 {
     template _isIntegralIota(alias beg, alias step)
     {
-        enum _isIntegralIota = is(typeof( beg) : long) &&
-                               is(typeof(step) : long);
+        enum _isIntegralIota = isValue!(long, beg) && isValue!(long, step);
     }
 
     template _iota(alias beg, alias step) if (_isIntegralIota!(beg, step))
