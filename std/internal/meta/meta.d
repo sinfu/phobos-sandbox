@@ -3945,100 +3945,6 @@ unittest
 
 
 /**
-Takes a subsequence of $(D seq) until encountering $(D E).
-
-Params:
-   E = Compile-time entity to look for.
- seq = Target sequence.
-
-Returns:
- Subsequence of $(D seq) before $(D E) (exclusive).  The passed-in sequence
- $(D seq) is returned if $(D E) is not found.
-
-Example:
-----------
-alias meta.until!(void, int, double, void, string) Res;
-static assert(is(Res == TypeSeq!(int, double)));
-----------
- */
-template until(E, seq...)
-{
-    alias untilIf!(isSame!E, seq) until;
-}
-
-/// ditto
-template until(alias E, seq...)
-{
-    alias untilIf!(isSame!E, seq) until;
-}
-
-
-unittest
-{
-    static assert(until!(void).length == 0);
-    static assert(until!(   0).length == 0);
-
-    static assert(is(until!(void, int, double) == Seq!(int, double)));
-    static assert(is(until!(   0, int, double) == Seq!(int, double)));
-
-    alias until!(void, int, string, void, void, double) Void;
-    static assert(is(Void == Seq!(int, string)));
-
-    alias until!("opAssign", "toString", "opAssign", "empty") opAss;
-    static assert([ opAss ] == [ "toString" ]);
-}
-
-unittest
-{
-    alias meta.until!(void, int, double, void, string) Res;
-    static assert(is(Res == TypeSeq!(int, double)));
-}
-
-
-
-/**
-Slices sequence $(D seq) until encoutering an element satisfying $(D pred).
-
-Params:
- pred = Unary predicate template.
-  seq = Target sequence.
-
-Returns:
- Subsequence of $(D seq) before the found element, if any, exclusive.
- The passed-in sequence $(D seq) is returned if not found.
-
-Example:
-----------
-alias meta.untilIf!(q{ is(A == const) },
-                    int, double, const string, bool) Res;
-static assert(is(Res == TypeSeq!(int, double)));
-----------
- */
-template untilIf(alias pred, seq...)
-{
-    alias seq[0 .. _findChunk!(unaryT!pred, 1).index!seq] untilIf;
-}
-
-
-unittest
-{
-    static assert(untilIf!(q{ true }).length == 0);
-
-    static assert([ untilIf!(q{ a < 0 }, 5,4,3,2,1,0) ] == [ 5,4,3,2,1,0 ]);
-    static assert([ untilIf!(q{ a < 0 }, 2,1,0,-1,-2) ] == [ 2,1,0 ]);
-    static assert([ untilIf!(q{ a < 0 }, -1,-2,-3,-4) ] == []);
-}
-
-unittest
-{
-    alias meta.untilIf!(q{ is(A == const) },
-                        int, double, const string, bool) Res;
-    static assert(is(Res == TypeSeq!(int, double)));
-}
-
-
-
-/**
 Finds the index of the first occurrence of $(D E) in a sequence.
 
 Params:
@@ -4121,13 +4027,13 @@ static assert(meta.indexIf!(q{ A.sizeof < 2 }, Types) == -1);
  */
 template indexIf(alias pred, seq...)
 {
-    static if (untilIf!(pred, seq).length == seq.length)
+    static if (_findChunk!(unaryT!pred, 1).index!seq == seq.length)
     {
         enum sizediff_t indexIf = -1;
     }
     else
     {
-        enum sizediff_t indexIf = untilIf!(pred, seq).length;
+        enum sizediff_t indexIf = _findChunk!(unaryT!pred, 1).index!seq;
     }
 }
 
