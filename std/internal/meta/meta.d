@@ -817,17 +817,16 @@ unittest
 //----------------------------------------------------------------------------//
 
 
-// Installs a code evaluating expr and aliasing it with '_'.  The result
-// can be an atomic entity or a sequence as expr returns.
 private mixin template _installLambdaExpr(string expr)
 {
+    // The result can be an atomic entity or a sequence as expr returns.
     static if (__traits(compiles, _expectEmptySeq!(mixin("("~ expr ~")[0 .. 0]"))))
     {
-        mixin("alias Seq!("~ expr ~") _;");     // sequence
+        mixin("alias Seq!("~ expr ~") _;");
     }
     else
     {
-        mixin("alias  Id!("~ expr ~") _;");     // atomic entity
+        mixin("alias  Id!("~ expr ~") _;");
     }
 }
 
@@ -882,14 +881,13 @@ template unaryT(alias templat)
 
 private template unaryTGen(string expr)
 {
-    // These elaborate frontends will give better error messages.
     template unaryT(alias a) { alias _unaryT!a._ unaryT; }
     template unaryT(      A) { alias _unaryT!A._ unaryT; }
 
     private template _unaryT(args...)
     {
         alias Id!(args[0]) a, A;
-        mixin _installLambdaExpr!expr;      // installs '_'
+        mixin _installLambdaExpr!expr;
     }
 }
 
@@ -977,7 +975,7 @@ private template binaryTGen(string expr)
     {
         alias Id!(args[0]) a, A;
         alias Id!(args[1]) b, B;
-        mixin _installLambdaExpr!expr;      // installs '_'
+        mixin _installLambdaExpr!expr;
     }
 }
 
@@ -1680,7 +1678,6 @@ template compose(alias template1 = Seq,
 {
     template compose(args...)
     {
-        // NOTE: Templates might be strings.
         alias apply!(template1, apply!(template2, args)) compose;
     }
 }
@@ -2181,7 +2178,6 @@ template repeat(size_t n, seq...)
     }
     else
     {
-        // Halving n reduces the recursion depth.
         alias Seq!(repeat!(   n    / 2, seq),
                    repeat!((n + 1) / 2, seq)) repeat;
     }
@@ -2330,7 +2326,6 @@ template reverse(seq...)
     }
     else
     {
-        // Halving seq reduces the recursion depth.
         alias Seq!(reverse!(seq[$/2 ..  $ ]),
                    reverse!(seq[ 0  .. $/2])) reverse;
     }
@@ -2851,7 +2846,6 @@ template map(alias fun, seq...)
     }
     else
     {
-        // Halving seq reduces the recursion depth.
         alias Seq!(map!(fun, seq[ 0  .. $/2]),
                    map!(fun, seq[$/2 ..  $ ])) map;
     }
