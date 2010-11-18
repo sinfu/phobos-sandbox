@@ -2008,7 +2008,7 @@ static assert(Base64Chars[32] == 'g');
 static assert(Base64Chars[62] == '+');
 ----------
  */
-template iota(alias beg, alias end, alias step) if (step <> 0)
+template iota(alias beg, alias end, alias step) if (step != 0)
 {
     static if ((end - beg) / step >= 0)
     {
