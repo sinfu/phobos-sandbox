@@ -3992,12 +3992,6 @@ sequence $(D seq) satisfies the predicate $(D pred).  Specifically:
 none = !pred!(seq[0]) && !pred!(seq[1]) && ... ;
 ----------
 
-These templates evaluate conditions lazily just like usual boolean
-expressions, so unnecessary instantiations will never kick in.  For
-example, $(D meta.all) immediately returns $(D false) at first failing
-element (if any) and doesn't instantiate $(D pred) with remaining
-elements.
-
 Params:
  pred = Unary predicate template or expression string.
   seq = Zero or more compile-time entities to examine.
