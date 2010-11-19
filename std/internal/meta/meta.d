@@ -3953,7 +3953,6 @@ template countIf(alias pred, seq...)
     }
     else
     {
-        // Halving seq reduces the recursion depth.
         enum countIf = countIf!(pred, seq[ 0  .. $/2]) +
                        countIf!(pred, seq[$/2 ..  $ ]);
     }
