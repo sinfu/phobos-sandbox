@@ -3661,17 +3661,12 @@ Returns:
  Subsequence of $(D seq) after $(D E) (inclusive).  The empty sequence
  is returned if $(D E) is not found.
 
-Example:
+Examples:
 ----------
 alias TypeSeq!(int, short, double, bool, string) Types;
 
 alias meta.find!(bool, Types) AfterBool;
 static assert(is(AfterBool == TypeSeq!(bool, string)));
-
-// Take the subsequence after the largest type.
-alias meta.find!(meta.most!(q{ A.sizeof > B.sizeof }, Types),
-                 Types) Sub;
-static assert(is(Sub == TypeSeq!(double, bool, string)));
 ----------
  */
 template find(E, seq...)
