@@ -984,8 +984,9 @@ $(D a, b, c, d, e, f, g) and $(D h) (plus capitalized ones) depending
 on the number of arguments.
 
 Params:
- fun = Expression string or template declaration.  The string may use
-       named parameters $(D a) to $(D h), $(D A) to $(D H) and $(D args).
+ expr = String representing a compile-time entity using variadic template
+        parameters.  Thestring may use named parameters $(D a) to $(D h),
+        $(D A) to $(D H) and variadic $(D args).
 
 Returns:
  Variadic template that evaluates $(D fun).
@@ -1339,9 +1340,8 @@ unittest    // doc example
 Creates a predicate template that inverts the result of the given one.
 
 Params:
- pred = Predicate template or expression string to invert.  The result
-        must be a compile-time value that is implicitly convertible to
-        $(D bool) in conditional expressions.
+ pred = Predicate template to invert.  The result must be a compile-time value
+        that is implicitly convertible to bool in conditional expressions.
 
 Returns:
  Template that evaluates $(D pred) and returns an inverted result.
@@ -3544,8 +3544,7 @@ comparison template $(D comp).  This template is effectively the same
 as $(D meta.sort!(comp, seq)[0]).
 
 Params:
- comp = Binary template or expression string that compares items in
-        the sequence for an ordering.
+ comp = Binary template that compares items in the sequence.
   seq = One or more compile-time entities.
 
 Example:
@@ -3993,7 +3992,7 @@ none = !pred!(seq[0]) && !pred!(seq[1]) && ... ;
 ----------
 
 Params:
- pred = Unary predicate template or expression string.
+ pred = Unary predicate template.
   seq = Zero or more compile-time entities to examine.
 
 Returns:
@@ -4116,7 +4115,7 @@ Determines if _only one of the elements of $(D seq) satisfies the predicate
 $(D pred).  The predicate is tested for all the elements.
 
 Params:
- pred = Unary predicate template or expression string.
+ pred = Unary predicate template.
   seq = Zero or more compile-time entities to examine.
 
 Returns:
