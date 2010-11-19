@@ -4486,22 +4486,20 @@ private template _intersectionBy(alias comp)
 
 
 /**
-The $(D switch) statement-esque utility template.
+The $(D switch) statement-like utility template.
 
 Params:
- cases = Sequence of zero or more $(D (condition, then)) patterns optionally
-         followed by a $(D default) argument.  $(D condition) is a boolean
-         value; $(D then) and $(D default) are any compile-time entities,
-         respectively.
+ cases = Sequence of zero or more $(D (_cond, then)) patterns optionally
+         followed by a $(D default) argument.  $(D _cond) is a compile-time
+         boolean value; $(D then) and $(D default) are any compile-time entities.
 
 Returns:
- The $(D then) argument associated with the first $(D condition) that is
- $(D true).  The $(D default) argument is returned if all the $(D condition)s
- are $(D false).
+ The $(D then) argument associated with the first $(D _cond) that is $(D true).
+ The $(D default) argument is returned if all the $(D _cond)s are $(D false).
 
- Instantiation fails if no $(D condition) is $(D true) and the $(D default)
- argument is not specified.  It also fails if there is a $(D condition) that
- is not strictly typed as $(D bool).
+ Instantiation fails if no $(D _cond) is $(D true) and the $(D default) argument
+ is not specified.  It also fails if there is a $(D _cond) that is not strictly
+ typed as $(D bool).
 
 Example:
 ----------
