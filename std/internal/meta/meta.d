@@ -2389,7 +2389,7 @@ Params:
  seq = Sequence to split.  The sequence can have arbitrary length.
 
 Returns:
- Sequence of packed segments of length $(D n).  Each segment is packed using
+ Sequence of packed segments of length $(D n).  Each _segment is packed using
  $(D meta.pack); use the $(D expand) property to yield the contents.
 
  The last _segment can be shorter than $(D n) if $(D seq.length) is not an
@@ -3753,7 +3753,7 @@ unittest
 
 
 /**
-Finds the index of the first occurrence of $(D E) in a sequence.
+Finds the _index of the first occurrence of $(D E) in a sequence.
 
 Params:
    E = Compile-time entity to look for.
