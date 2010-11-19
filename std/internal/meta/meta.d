@@ -4367,14 +4367,7 @@ static assert(is(Inter == meta.setify!(int, bool, bool)));
  */
 template intersection(seqs...)
 {
-    static if (seqs.length == 0)
-    {
-        alias Seq!() intersection;
-    }
-    else
-    {
-        alias reduce!(compose!(pack, .intersection), seqs).expand intersection;
-    }
+    alias reduce!(compose!(pack, .intersection), seqs).expand intersection;
 }
 
 template intersection(alias A, alias B)
@@ -4385,6 +4378,11 @@ template intersection(alias A, alias B)
 template intersection(alias A)
 {
     alias setify!(A.expand) intersection;
+}
+
+template intersection()
+{
+    alias Seq!() intersection;
 }
 
 
