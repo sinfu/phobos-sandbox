@@ -1082,7 +1082,7 @@ Binds $(D args) to the leftmost parameters of a template $(D templat).
 Params:
  templat = Template or string that can be tranformed to a variadic template
            using $(D meta.variadicT).
-    args = Zero or more template instantiation arguments to bind.
+    args = Zero or more template instantiation arguments to _bind.
 
 Returns:
  Template that instantiates $(D templat) with the bound arguments and
@@ -1523,7 +1523,7 @@ satisfied, $(D meta.or) immediately returns $(D true) without evaluating
 remaining predicates.
 
 Params:
- preds = Zero or more predicate templates to compose.  This argument can be
+ preds = Zero _or more predicate templates to compose.  This argument can be
          empty; in that case, the resulting template constantly evaluates to
          $(D false).
 
