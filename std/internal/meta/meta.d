@@ -2548,16 +2548,17 @@ unittest
 
 /**
 Generates a sequence iterating given sequences in lockstep.  The iteration
-stops on encountering the end of the shortest sequence.
+stops at the end of the shortest sequence.
 
 Params:
  seqs = Sequence of packed sequences.  Each packed sequence must have a
         property $(D expand) that yields a sequence.
 
 Returns:
- Sequence of the transversals of $(D seqs), each of which is the result of
- $(D meta.transversal) packed in a $(D meta.pack).  The empty sequence is
- returned if $(D seqs) is empty or any of the sequences is empty.
+ Sequence of the transversals of $(D seqs).  The $(D i)-th transversal is a
+ packed sequence containing the $(D i)-th elements of given sequences.  The
+ empty sequence is returned if $(D seqs) is empty or any of the sequences
+ is empty.
 
 Example:
 ----------
